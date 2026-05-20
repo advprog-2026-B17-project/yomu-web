@@ -10,7 +10,6 @@ interface Question {
   id: string;
   questionText: string;
   options: string[];
-  correctAnswer: number;
 }
 
 interface Reading {
@@ -134,33 +133,7 @@ export default function ReadingDetailPage() {
             <div className="prose max-w-none">
               <p className="whitespace-pre-wrap">{reading.content}</p>
             </div>
-            <div className="mt-8 flex justify-end gap-4">
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await fetch(
-                      `${process.env.NEXT_PUBLIC_API_URL}/api/readings/${id}/complete`,
-                      {
-                        method: 'POST',
-                        headers: { Authorization: `Bearer ${token}` },
-                      }
-                    );
-                    if (res.ok) {
-                      showToast('Bacaan ditandai selesai!', 'success');
-                    } else if (res.status === 409) {
-                      showToast('Bacaan sudah pernah ditandai selesai', 'info');
-                    } else {
-                      showToast('Gagal menandai bacaan', 'error');
-                    }
-                  } catch (err) {
-                    console.error('Failed to mark reading complete:', err);
-                    showToast('Gagal menandai bacaan', 'error');
-                  }
-                }}
-                className="px-6 py-3 bg-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-300"
-              >
-                Selesai Baca
-              </button>
+            <div className="mt-8 flex justify-end">
               <button
                 onClick={() => setStep('quiz')}
                 className="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700"
@@ -206,13 +179,7 @@ export default function ReadingDetailPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-6 flex justify-end gap-4">
-              <button
-                onClick={() => setStep('reading')}
-                className="px-4 py-2 text-slate-600 hover:text-slate-800"
-              >
-                Kembali ke Teks
-              </button>
+            <div className="mt-6 flex justify-end">
               <button
                 onClick={submitQuiz}
                 disabled={isSubmitting || answers.some((a) => a === -1)}
