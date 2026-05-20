@@ -21,6 +21,7 @@ const handler = NextAuth({
               username: user.email?.split('@')[0],
               displayName: user.name,
               googleId: profile?.sub,
+              idToken: account.id_token,
             }),
           });
 

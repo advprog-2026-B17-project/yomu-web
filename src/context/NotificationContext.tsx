@@ -28,7 +28,7 @@ export function NotificationProvider({ children, userId, token }: { children: Re
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:10000';
 
   const refresh = useCallback(async () => {
     if (!userId) return;

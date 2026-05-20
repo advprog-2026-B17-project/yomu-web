@@ -32,7 +32,7 @@ export default function AchievementsPage() {
     const fetchAchievements = async () => {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'}/api/achievements`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:10000'}/api/achievements/${user.id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (res.ok) {

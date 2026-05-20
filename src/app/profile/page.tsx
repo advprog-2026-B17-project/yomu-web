@@ -10,6 +10,8 @@ interface UserProfile {
   user: {
     id: string;
     username: string;
+    email: string;
+    phone?: string | null;
     displayName: string;
     role: string;
   };
@@ -39,6 +41,9 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingVisibility, setIsEditingVisibility] = useState(false);
   const [togglingAchievementId, setTogglingAchievementId] = useState<string | null>(null);
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -62,6 +67,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
+      setUsername(user.username || '');
       setDisplayName(user.displayName || '');
     }
   }, [user]);
@@ -74,7 +80,13 @@ export default function ProfilePage() {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => res.json())
-      .then(data => setProfileData(data))
+      .then(data => {
+        setProfileData(data);
+        setUsername(data.user?.username || user.username || '');
+        setEmail(data.user?.email || '');
+        setPhone(data.user?.phone || '');
+        setDisplayName(data.user?.displayName || user.displayName || '');
+      })
       .catch(err => console.error('Failed to fetch profile:', err));
     }
   }, [user, token, apiUrl]);
@@ -90,7 +102,10 @@ export default function ProfilePage() {
     setSuccess('');
     setPassword('');
     setConfirmPassword('');
-    setDisplayName(user?.displayName || '');
+    setUsername(profileData?.user?.username || user?.username || '');
+    setEmail(profileData?.user?.email || '');
+    setPhone(profileData?.user?.phone || '');
+    setDisplayName(profileData?.user?.displayName || user?.displayName || '');
   };
 
   const handleSave = async () => {
@@ -111,7 +126,10 @@ export default function ProfilePage() {
     setIsSaving(true);
 
     try {
-      const body: { displayName: string; password?: string; updatePassword?: boolean } = {
+      const body: { username: string; email: string; phone: string; displayName: string; password?: string; updatePassword?: boolean } = {
+        username,
+        email,
+        phone,
         displayName,
       };
 
@@ -133,6 +151,24 @@ export default function ProfilePage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message || 'Failed to update profile');
       }
+
+      const updatedUser = await res.json();
+      setProfileData(prev => prev ? {
+        ...prev,
+        user: {
+          ...prev.user,
+          username: updatedUser.username,
+          email: updatedUser.email,
+          phone: updatedUser.phone,
+          displayName: updatedUser.displayName,
+        },
+      } : prev);
+      localStorage.setItem('yomu_user', JSON.stringify({
+        id: updatedUser.id,
+        username: updatedUser.username,
+        displayName: updatedUser.displayName,
+        role: updatedUser.role,
+      }));
 
       setSuccess('Profile updated successfully');
       setIsEditing(false);
@@ -319,13 +355,44 @@ export default function ProfilePage() {
           )}
 
           <div className="space-y-4">
-            <div>
-              <label className="text-sm text-slate-500">Username</label>
-              <p className="font-medium">{user.username}</p>
-            </div>
-
             {isEditing ? (
               <>
+                <div>
+                  <label htmlFor="username" className="text-sm text-slate-500">Username</label>
+                  <input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    minLength={3}
+                    maxLength={50}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="text-sm text-slate-500">Email</label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="phone" className="text-sm text-slate-500">Phone</label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Optional"
+                  />
+                </div>
+
                 <div>
                   <label htmlFor="displayName" className="text-sm text-slate-500">Display Name</label>
                   <input
@@ -388,6 +455,18 @@ export default function ProfilePage() {
               </>
             ) : (
               <>
+                <div>
+                  <label className="text-sm text-slate-500">Username</label>
+                  <p className="font-medium">{profileData?.user?.username || user.username}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-slate-500">Email</label>
+                  <p className="font-medium">{profileData?.user?.email || '-'}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-slate-500">Phone</label>
+                  <p className="font-medium">{profileData?.user?.phone || '-'}</p>
+                </div>
                 <div>
                   <label className="text-sm text-slate-500">Display Name</label>
                   <p className="font-medium">{user.displayName}</p>

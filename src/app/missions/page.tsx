@@ -36,7 +36,7 @@ export default function MissionsPage() {
     const fetchMissions = async () => {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081'}/api/missions/${user.id}`,
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:10000'}/api/missions/${user.id}`,
           { headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
