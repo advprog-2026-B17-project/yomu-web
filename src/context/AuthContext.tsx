@@ -17,6 +17,7 @@ interface AuthContextType {
   login: (credentials: { username: string; password: string }) => Promise<void>;
   register: (data: { username: string; email: string; displayName: string; password: string }) => Promise<void>;
   logout: () => void;
+  updateUser: (data: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -99,8 +100,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     nextAuthSignOut({ callbackUrl: '/login' });
   };
 
+  const updateUser = (data: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, ...data };
+      localStorage.setItem('yomu_user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -35,7 +35,7 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  const { user, logout, token, isLoading: authLoading } = useAuth();
+  const { user, logout, token, isLoading: authLoading, updateUser } = useAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -169,6 +169,7 @@ export default function ProfilePage() {
         displayName: updatedUser.displayName,
         role: updatedUser.role,
       }));
+      updateUser({ displayName: updatedUser.displayName });
 
       setSuccess('Profile updated successfully');
       setIsEditing(false);
@@ -229,7 +230,7 @@ export default function ProfilePage() {
                 {displayName?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div>
-                <h2 className="text-xl font-bold">{isEditing ? displayName : user.displayName}</h2>
+                <h2 className="text-xl font-bold">{isEditing ? displayName : (profileData?.user?.displayName || user.displayName)}</h2>
                 <p className="text-slate-500">@{user.username}</p>
               </div>
             </div>
@@ -238,7 +239,7 @@ export default function ProfilePage() {
                 onClick={handleEditToggle}
                 className="px-4 py-2 text-primary-600 hover:bg-primary-50 rounded-lg"
               >
-                Edit
+                Edi
               </button>
             )}
           </div>
@@ -469,7 +470,7 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <label className="text-sm text-slate-500">Display Name</label>
-                  <p className="font-medium">{user.displayName}</p>
+                  <p className="font-medium">{profileData?.user?.displayName || user.displayName}</p>
                 </div>
                 <div>
                   <label className="text-sm text-slate-500">Role</label>
