@@ -2,20 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-
-interface Mission {
-  id: string;
-  title: string;
-  description: string;
-  targetType: string;
-  targetCount: number;
-  xpReward: number;
-  isActive: boolean;
-}
+import {
+  AdminMissionDTO,
+  apiRequest,
+  apiRoutes,
+  formatApiError,
+} from "@/lib/api";
 
 export default function AdminMissionsPage() {
   const { user, token } = useAuth();
-  const [missions, setMissions] = useState<Mission[]>([]);
+  const [missions, setMissions] = useState<AdminMissionDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -33,15 +29,13 @@ export default function AdminMissionsPage() {
 
   const fetchMissions = async () => {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/missions`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+      const data = await apiRequest<AdminMissionDTO[]>(
+        apiRoutes.admin.missions.list,
+        { token },
       );
-      if (res.ok) setMissions(await res.json());
+      setMissions(data);
     } catch (err) {
-      console.error("Failed:", err);
+      alert(formatApiError(err, "Gagal memuat misi"));
     } finally {
       setLoading(false);
     }
@@ -50,54 +44,51 @@ export default function AdminMissionsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/missions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(form),
-        },
-      );
-      if (res.ok) {
-        setShowForm(false);
-        setForm({
-          title: "",
-          description: "",
-          targetType: "reading",
-          targetCount: 3,
-          xpReward: 10,
-        });
-        fetchMissions();
-      }
-    } catch {
-      alert("Error");
+      await apiRequest(apiRoutes.admin.missions.list, {
+        method: "POST",
+        token,
+        body: form,
+      });
+      setShowForm(false);
+      setForm({
+        title: "",
+        description: "",
+        targetType: "reading",
+        targetCount: 3,
+        xpReward: 10,
+      });
+      fetchMissions();
+    } catch (err) {
+      alert(formatApiError(err, "Gagal menyimpan misi"));
     }
   };
 
   const toggleMission = async (id: string, active: boolean) => {
-    await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/missions/${id}/toggle?active=${!active}`,
-      {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    fetchMissions();
+    try {
+      await apiRequest(
+        `${apiRoutes.admin.missions.toggle(id)}?active=${!active}`,
+        {
+          method: "PATCH",
+          token,
+        },
+      );
+      fetchMissions();
+    } catch (err) {
+      alert(formatApiError(err, "Gagal mengubah status misi"));
+    }
   };
 
   const deleteMission = async (id: string) => {
     if (confirm("Hapus misi ini?")) {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/missions/${id}`,
-        {
+      try {
+        await apiRequest(apiRoutes.admin.missions.byId(id), {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      fetchMissions();
+          token,
+        });
+        fetchMissions();
+      } catch (err) {
+        alert(formatApiError(err, "Gagal menghapus misi"));
+      }
     }
   };
 
@@ -202,40 +193,47 @@ export default function AdminMissionsPage() {
         <p className="text-slate-500">Belum ada misi.</p>
       ) : (
         <div className="space-y-4">
-          {missions.map((m) => (
-            <div key={m.id} className="p-4 bg-white rounded-xl border">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{m.title}</h3>
-                    <span
-                      className={`text-xs px-2 py-1 rounded ${m.isActive ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}
-                    >
-                      {m.isActive ? "Aktif" : "Nonaktif"}
-                    </span>
+          {missions.map((m) => {
+            const active = m.isActive ?? m.active ?? false;
+
+            return (
+              <div key={m.id} className="p-4 bg-white rounded-xl border">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{m.title}</h3>
+                      <span
+                        className={`text-xs px-2 py-1 rounded ${active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}
+                      >
+                        {active ? "Aktif" : "Nonaktif"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {m.description}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Target: {m.targetType} × {m.targetCount} | XP:{" "}
+                      {m.xpReward}
+                    </p>
                   </div>
-                  <p className="text-sm text-slate-500 mt-1">{m.description}</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Target: {m.targetType} × {m.targetCount} | XP: {m.xpReward}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => toggleMission(m.id, m.isActive)}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    {m.isActive ? "Nonaktifkan" : "Aktifkan"}
-                  </button>
-                  <button
-                    onClick={() => deleteMission(m.id)}
-                    className="text-sm text-red-600 hover:underline"
-                  >
-                    Hapus
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => toggleMission(m.id, active)}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      {active ? "Nonaktifkan" : "Aktifkan"}
+                    </button>
+                    <button
+                      onClick={() => deleteMission(m.id)}
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      Hapus
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

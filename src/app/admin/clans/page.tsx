@@ -2,20 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-
-interface Clan {
-  id: string;
-  name: string;
-  tier: string;
-  totalScore: number;
-  leaderId: string;
-  leaderName: string;
-  memberCount: number;
-}
+import { apiRequest, apiRoutes, ClanRow, formatApiError } from "@/lib/api";
 
 export default function AdminClansPage() {
   const { user, token } = useAuth();
-  const [clans, setClans] = useState<Clan[]>([]);
+  const [clans, setClans] = useState<ClanRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,12 +16,12 @@ export default function AdminClansPage() {
 
   const fetchClans = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/clans`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const data = await apiRequest<ClanRow[]>(apiRoutes.clans.list, {
+        token,
       });
-      if (res.ok) setClans(await res.json());
+      setClans(data);
     } catch (err) {
-      console.error("Failed:", err);
+      alert(formatApiError(err, "Gagal memuat clan"));
     } finally {
       setLoading(false);
     }
@@ -38,11 +29,15 @@ export default function AdminClansPage() {
 
   const deleteClan = async (id: string) => {
     if (confirm("Hapus clan ini?")) {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/clans/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      fetchClans();
+      try {
+        await apiRequest(apiRoutes.clans.delete(id), {
+          method: "DELETE",
+          token,
+        });
+        fetchClans();
+      } catch (err) {
+        alert(formatApiError(err, "Gagal menghapus clan"));
+      }
     }
   };
 

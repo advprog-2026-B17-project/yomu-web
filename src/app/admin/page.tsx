@@ -2,22 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
-
-interface Season {
-  id: string;
-  name: string;
-  isActive: boolean;
-}
+import {
+  AdminMissionDTO,
+  apiRequest,
+  apiRoutes,
+  ClanRow,
+  formatApiError,
+  isApiError,
+  ReadingDTO,
+  SeasonDTO,
+} from "@/lib/api";
 
 export default function AdminDashboard() {
   const { user, token } = useAuth();
-  const router = useRouter();
   const { showToast } = useToast();
-  const [stats, setStats] = useState<any>({});
+  const [stats, setStats] = useState({ readings: 0, missions: 0, clans: 0 });
   const [loading, setLoading] = useState(true);
-  const [activeSeason, setActiveSeason] = useState<Season | null>(null);
+  const [activeSeason, setActiveSeason] = useState<SeasonDTO | null>(null);
   const [endingSeason, setEndingSeason] = useState(false);
 
   useEffect(() => {
@@ -25,34 +27,27 @@ export default function AdminDashboard() {
 
     const fetchStats = async () => {
       try {
-        const [readingsRes, missionsRes, clansRes, seasonRes] =
-          await Promise.all([
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/readings`, {
-              headers: { Authorization: `Bearer ${token}` },
-            }),
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/missions`, {
-              headers: { Authorization: `Bearer ${token}` },
-            }),
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/clans`, {
-              headers: { Authorization: `Bearer ${token}` },
-            }),
-            fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/admin/seasons/active`,
-              { headers: { Authorization: `Bearer ${token}` } },
-            ),
-          ]);
-
+        const [readings, missions, clans, season] = await Promise.all([
+          apiRequest<ReadingDTO[]>(apiRoutes.readings.list, { token }),
+          apiRequest<AdminMissionDTO[]>(apiRoutes.admin.missions.list, {
+            token,
+          }),
+          apiRequest<ClanRow[]>(apiRoutes.clans.list, { token }),
+          apiRequest<SeasonDTO>(apiRoutes.admin.seasons.active, {
+            token,
+          }).catch((err) => {
+            if (isApiError(err) && err.status === 404) return null;
+            throw err;
+          }),
+        ]);
         setStats({
-          readings: readingsRes.ok ? (await readingsRes.json()).length : 0,
-          missions: missionsRes.ok ? (await missionsRes.json()).length : 0,
-          clans: clansRes.ok ? (await clansRes.json()).length : 0,
+          readings: readings.length,
+          missions: missions.length,
+          clans: clans.length,
         });
-
-        if (seasonRes.ok) {
-          setActiveSeason(await seasonRes.json());
-        }
+        setActiveSeason(season);
       } catch (err) {
-        console.error("Failed to fetch stats:", err);
+        showToast(formatApiError(err, "Gagal memuat statistik admin"), "error");
       } finally {
         setLoading(false);
       }
@@ -72,19 +67,14 @@ export default function AdminDashboard() {
 
     setEndingSeason(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/seasons/${activeSeason.id}/end`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (res.ok) {
-        showToast("Season berhasil diakhiri!", "success");
-        setActiveSeason(null);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || "Gagal mengakhiri season", "error");
-      }
-    } catch {
-      showToast("Error koneksi", "error");
+      await apiRequest(apiRoutes.admin.seasons.end(activeSeason.id), {
+        method: "POST",
+        token,
+      });
+      showToast("Season berhasil diakhiri!", "success");
+      setActiveSeason(null);
+    } catch (err) {
+      showToast(formatApiError(err, "Gagal mengakhiri season"), "error");
     } finally {
       setEndingSeason(false);
     }

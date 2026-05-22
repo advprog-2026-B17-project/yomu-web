@@ -2,15 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  milestone: number;
-  achievementType: string;
-  iconUrl: string | null;
-}
+import {
+  AdminAchievementDTO,
+  apiRequest,
+  apiRoutes,
+  formatApiError,
+} from "@/lib/api";
 
 const defaultForm = {
   name: "",
@@ -22,7 +19,7 @@ const defaultForm = {
 
 export default function AdminAchievementsPage() {
   const { user, token } = useAuth();
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [achievements, setAchievements] = useState<AdminAchievementDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -36,16 +33,13 @@ export default function AdminAchievementsPage() {
 
   const fetchAchievements = async () => {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/achievements`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+      const data = await apiRequest<AdminAchievementDTO[]>(
+        apiRoutes.admin.achievements.list,
+        { token },
       );
-
-      if (res.ok) setAchievements(await res.json());
+      setAchievements(data);
     } catch (err) {
-      console.error("Failed:", err);
+      alert(formatApiError(err, "Gagal memuat achievement"));
     } finally {
       setLoading(false);
     }
@@ -54,44 +48,37 @@ export default function AdminAchievementsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const url = editingId
-      ? `${process.env.NEXT_PUBLIC_API_URL}/api/admin/achievements/${editingId}`
-      : `${process.env.NEXT_PUBLIC_API_URL}/api/admin/achievements`;
-
     const method = editingId ? "PUT" : "POST";
+    const endpoint = editingId
+      ? apiRoutes.admin.achievements.byId(editingId)
+      : apiRoutes.admin.achievements.list;
 
     try {
-      const res = await fetch(url, {
+      await apiRequest(endpoint, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+        token,
+        body: {
           ...form,
+          type: form.achievementType,
           iconUrl: form.iconUrl.trim() || null,
-        }),
+        },
       });
 
-      if (res.ok) {
-        cancelEdit();
-
-        fetchAchievements();
-      } else {
-        alert("Gagal menyimpan achievement");
-      }
-    } catch {
-      alert("Error");
+      cancelEdit();
+      fetchAchievements();
+    } catch (err) {
+      alert(formatApiError(err, "Gagal menyimpan achievement"));
     }
   };
 
-  const handleEdit = (achievement: Achievement) => {
+  const handleEdit = (achievement: AdminAchievementDTO) => {
     setEditingId(achievement.id);
     setForm({
       name: achievement.name,
       description: achievement.description || "",
       milestone: achievement.milestone,
-      achievementType: achievement.achievementType || "reading_count",
+      achievementType:
+        achievement.achievementType || achievement.type || "reading_count",
       iconUrl: achievement.iconUrl || "",
     });
     setShowForm(true);
@@ -100,14 +87,15 @@ export default function AdminAchievementsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Hapus achievement ini?")) return;
 
-    await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/achievements/${id}`,
-      {
+    try {
+      await apiRequest(apiRoutes.admin.achievements.byId(id), {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    fetchAchievements();
+        token,
+      });
+      fetchAchievements();
+    } catch (err) {
+      alert(formatApiError(err, "Gagal menghapus achievement"));
+    }
   };
 
   const cancelEdit = () => {
@@ -216,46 +204,51 @@ export default function AdminAchievementsPage() {
         <p className="text-slate-500">Belum ada achievement.</p>
       ) : (
         <div className="space-y-4">
-          {achievements.map((achievement) => (
-            <div
-              key={achievement.id}
-              className="p-4 bg-white rounded-xl border"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{achievement.name}</h3>
-                    <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700">
-                      {achievement.achievementType}
-                    </span>
+          {achievements.map((achievement) => {
+            const achievementType =
+              achievement.achievementType || achievement.type || "-";
+
+            return (
+              <div
+                key={achievement.id}
+                className="p-4 bg-white rounded-xl border"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{achievement.name}</h3>
+                      <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700">
+                        {achievementType}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {achievement.description}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Milestone: {achievement.milestone}
+                      {achievement.iconUrl
+                        ? ` | Icon: ${achievement.iconUrl}`
+                        : ""}
+                    </p>
                   </div>
-                  <p className="text-sm text-slate-500 mt-1">
-                    {achievement.description}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Milestone: {achievement.milestone}
-                    {achievement.iconUrl
-                      ? ` | Icon: ${achievement.iconUrl}`
-                      : ""}
-                  </p>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => handleEdit(achievement)}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(achievement.id)}
-                    className="text-sm text-red-600 hover:underline"
-                  >
-                    Hapus
-                  </button>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => handleEdit(achievement)}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(achievement.id)}
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      Hapus
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

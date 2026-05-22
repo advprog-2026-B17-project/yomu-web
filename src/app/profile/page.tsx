@@ -5,34 +5,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
-
-interface UserProfile {
-  user: {
-    id: string;
-    username: string;
-    email: string;
-    phone?: string | null;
-    displayName: string;
-    role: string;
-  };
-  stats: {
-    readingsCompleted: number;
-    quizzesTaken: number;
-    averageAccuracy: number;
-  };
-  achievements: Array<{
-    id: string;
-    name: string;
-    unlockedAt: string;
-    visible: boolean;
-  }>;
-  clan: {
-    id: string;
-    name: string;
-    tier: string;
-    role: string;
-  } | null;
-}
+import {
+  apiRequest,
+  apiRoutes,
+  formatApiError,
+  normalizeUserProfile,
+  UserDTO,
+  UserProfileDTO,
+} from "@/lib/api";
 
 export default function ProfilePage() {
   const { user, logout, token, isLoading: authLoading } = useAuth();
@@ -52,7 +32,7 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const [profileData, setProfileData] = useState<UserProfileDTO | null>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -74,24 +54,28 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:10000";
-
   useEffect(() => {
     if (user && token) {
-      fetch(`${apiUrl}/api/users/${user.id}/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setProfileData(data);
-          setUsername(data.user?.username || user.username || "");
-          setEmail(data.user?.email || "");
-          setPhone(data.user?.phone || "");
-          setDisplayName(data.user?.displayName || user.displayName || "");
+      Promise.all([
+        apiRequest<UserDTO>(apiRoutes.users.me, { token }),
+        apiRequest<unknown>(apiRoutes.users.profile(user.id), { token }),
+      ])
+        .then(([userData, profile]) => {
+          const mergedProfile = normalizeUserProfile(profile, userData);
+
+          setProfileData(mergedProfile);
+          setUsername(mergedProfile.user?.username || user.username || "");
+          setEmail(mergedProfile.user?.email || "");
+          setPhone(mergedProfile.user?.phone || "");
+          setDisplayName(
+            mergedProfile.user?.displayName || user.displayName || "",
+          );
         })
-        .catch((err) => console.error("Failed to fetch profile:", err));
+        .catch((err) =>
+          showToast(formatApiError(err, "Gagal memuat profil"), "error"),
+        );
     }
-  }, [user, token, apiUrl]);
+  }, [user, token, showToast]);
 
   const handleLogout = () => {
     logout();
@@ -147,21 +131,15 @@ export default function ProfilePage() {
         body.updatePassword = true;
       }
 
-      const res = await fetch(`${apiUrl}/api/users/${user?.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const updatedUser = await apiRequest<UserDTO>(
+        apiRoutes.users.byId(user?.id || ""),
+        {
+          method: "PUT",
+          token,
+          body,
         },
-        body: JSON.stringify(body),
-      });
+      );
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || "Failed to update profile");
-      }
-
-      const updatedUser = await res.json();
       setProfileData((prev) =>
         prev
           ? {
@@ -191,7 +169,7 @@ export default function ProfilePage() {
       setPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update profile");
+      setError(formatApiError(err, "Failed to update profile"));
     } finally {
       setIsSaving(false);
     }
@@ -203,19 +181,13 @@ export default function ProfilePage() {
   ) => {
     setTogglingAchievementId(achievementId);
     try {
-      const res = await fetch(
-        `${apiUrl}/api/achievements/${achievementId}/visibility?visible=${!currentVisible}`,
+      await apiRequest(
+        apiRoutes.achievements.visibility(achievementId, !currentVisible),
         {
           method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          token,
         },
       );
-
-      if (!res.ok) {
-        throw new Error("Failed to toggle visibility");
-      }
 
       // Update local state
       setProfileData((prev) =>
@@ -233,10 +205,7 @@ export default function ProfilePage() {
 
       showToast("Achievement visibility updated", "success");
     } catch (err) {
-      showToast(
-        err instanceof Error ? err.message : "Failed to update visibility",
-        "error",
-      );
+      showToast(formatApiError(err, "Failed to update visibility"), "error");
     } finally {
       setTogglingAchievementId(null);
     }
@@ -265,7 +234,9 @@ export default function ProfilePage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold">
-                  {isEditing ? displayName : user.displayName}
+                  {isEditing
+                    ? displayName
+                    : profileData?.user?.displayName || user.displayName}
                 </h2>
                 <p className="text-slate-500">@{user.username}</p>
               </div>
@@ -343,7 +314,11 @@ export default function ProfilePage() {
                       <div>
                         <p className="font-medium text-amber-800">{ach.name}</p>
                         <p className="text-xs text-amber-600">
-                          {new Date(ach.unlockedAt).toLocaleDateString("id-ID")}
+                          {ach.unlockedAt
+                            ? new Date(ach.unlockedAt).toLocaleDateString(
+                                "id-ID",
+                              )
+                            : "-"}
                         </p>
                       </div>
                       {isEditingVisibility && (
@@ -568,7 +543,9 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <label className="text-sm text-slate-500">Display Name</label>
-                  <p className="font-medium">{user.displayName}</p>
+                  <p className="font-medium">
+                    {profileData?.user?.displayName || user.displayName}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-slate-500">Role</label>

@@ -2,21 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-
-interface Reading {
-  id: string;
-  title: string;
-  content: string;
-  category: { id: number; name: string } | null;
-  createdAt: string;
-}
+import { apiRequest, apiRoutes, formatApiError, ReadingDTO } from "@/lib/api";
 
 export default function AdminReadingsPage() {
   const { user, token } = useAuth();
-  const router = useRouter();
-  const [readings, setReadings] = useState<Reading[]>([]);
+  const [readings, setReadings] = useState<ReadingDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -33,15 +24,12 @@ export default function AdminReadingsPage() {
 
   const fetchReadings = async () => {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/readings`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      if (res.ok) setReadings(await res.json());
+      const data = await apiRequest<ReadingDTO[]>(apiRoutes.readings.list, {
+        token,
+      });
+      setReadings(data);
     } catch (err) {
-      console.error("Failed:", err);
+      alert(formatApiError(err, "Gagal memuat bacaan"));
     } finally {
       setLoading(false);
     }
@@ -50,26 +38,30 @@ export default function AdminReadingsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/readings`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ ...form, categoryName: form.category }),
-        },
-      );
-      if (res.ok) {
-        setShowForm(false);
-        setForm({ title: "", content: "", category: "News & Media" });
-        fetchReadings();
-      } else {
-        alert("Gagal membuat bacaan");
-      }
-    } catch {
-      alert("Error");
+      await apiRequest(apiRoutes.readings.list, {
+        method: "POST",
+        token,
+        body: { ...form, categoryName: form.category },
+      });
+      setShowForm(false);
+      setForm({ title: "", content: "", category: "News & Media" });
+      fetchReadings();
+    } catch (err) {
+      alert(formatApiError(err, "Gagal membuat bacaan"));
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Hapus bacaan ini?")) return;
+
+    try {
+      await apiRequest(apiRoutes.readings.byId(id), {
+        method: "DELETE",
+        token,
+      });
+      fetchReadings();
+    } catch (err) {
+      alert(formatApiError(err, "Gagal menghapus bacaan"));
     }
   };
 
@@ -159,18 +151,7 @@ export default function AdminReadingsPage() {
                   </p>
                 </div>
                 <button
-                  onClick={async () => {
-                    if (confirm("Hapus bacaan ini?")) {
-                      await fetch(
-                        `${process.env.NEXT_PUBLIC_API_URL}/api/readings/${r.id}`,
-                        {
-                          method: "DELETE",
-                          headers: { Authorization: `Bearer ${token}` },
-                        },
-                      );
-                      fetchReadings();
-                    }
-                  }}
+                  onClick={() => handleDelete(r.id)}
                   className="text-red-600 text-sm hover:underline"
                 >
                   Hapus

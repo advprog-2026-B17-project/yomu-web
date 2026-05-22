@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
+import { apiRequest, apiRoutes, formatApiError, ReadingDTO } from "@/lib/api";
 
-interface Question {
+interface AdminQuestion {
   id: string;
   questionText: string;
   options: string[];
@@ -13,21 +14,13 @@ interface Question {
   explanation: string;
 }
 
-interface Reading {
-  id: string;
-  title: string;
-  content: string;
-  category: { name: string } | null;
-}
-
 export default function AdminReadingDetailPage() {
   const { user, token } = useAuth();
-  const router = useRouter();
   const params = useParams();
   const readingId = params.id as string;
 
-  const [reading, setReading] = useState<Reading | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [reading, setReading] = useState<ReadingDTO | null>(null);
+  const [questions, setQuestions] = useState<AdminQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -45,22 +38,18 @@ export default function AdminReadingDetailPage() {
 
   const fetchData = async () => {
     try {
-      const [readingRes, questionsRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/readings/${readingId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/admin/questions/reading/${readingId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
+      const [readingData, questionsData] = await Promise.all([
+        apiRequest<ReadingDTO>(apiRoutes.readings.byId(readingId), { token }),
+        apiRequest<AdminQuestion[]>(
+          apiRoutes.admin.questions.byReading(readingId),
+          { token },
         ),
       ]);
 
-      if (readingRes.ok) setReading(await readingRes.json());
-      if (questionsRes.ok) setQuestions(await questionsRes.json());
+      setReading(readingData);
+      setQuestions(questionsData);
     } catch (err) {
-      console.error("Failed:", err);
+      alert(formatApiError(err, "Gagal memuat bacaan"));
     } finally {
       setLoading(false);
     }
@@ -68,38 +57,33 @@ export default function AdminReadingDetailPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const url = editingId
-      ? `${process.env.NEXT_PUBLIC_API_URL}/api/admin/questions/${editingId}`
-      : `${process.env.NEXT_PUBLIC_API_URL}/api/admin/questions`;
+    const endpoint = editingId
+      ? apiRoutes.admin.questions.byId(editingId)
+      : apiRoutes.admin.questions.list;
     const method = editingId ? "PUT" : "POST";
 
     try {
-      const res = await fetch(url, {
+      await apiRequest(endpoint, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ readingId, ...form }),
+        token,
+        body: { readingId, ...form },
       });
 
-      if (res.ok) {
-        setShowForm(false);
-        setEditingId(null);
-        setForm({
-          questionText: "",
-          options: ["", "", "", ""],
-          correctAnswer: 0,
-          explanation: "",
-        });
-        fetchData();
-      }
-    } catch {
-      alert("Error");
+      setShowForm(false);
+      setEditingId(null);
+      setForm({
+        questionText: "",
+        options: ["", "", "", ""],
+        correctAnswer: 0,
+        explanation: "",
+      });
+      fetchData();
+    } catch (err) {
+      alert(formatApiError(err, "Gagal menyimpan soal"));
     }
   };
 
-  const handleEdit = (q: Question) => {
+  const handleEdit = (q: AdminQuestion) => {
     setEditingId(q.id);
     setForm({
       questionText: q.questionText,
@@ -112,14 +96,15 @@ export default function AdminReadingDetailPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Hapus soal ini?")) return;
-    await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/admin/questions/${id}`,
-      {
+    try {
+      await apiRequest(apiRoutes.admin.questions.byId(id), {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    fetchData();
+        token,
+      });
+      fetchData();
+    } catch (err) {
+      alert(formatApiError(err, "Gagal menghapus soal"));
+    }
   };
 
   const cancelEdit = () => {

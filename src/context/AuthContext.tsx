@@ -12,6 +12,7 @@ import {
   signIn as nextAuthSignIn,
   signOut as nextAuthSignOut,
 } from "next-auth/react";
+import { apiRequest, apiRoutes, AuthResponse } from "@/lib/api";
 
 interface User {
   id: string;
@@ -35,6 +36,15 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+function toUser(data: AuthResponse): User {
+  return {
+    id: data.userId,
+    username: data.username,
+    displayName: data.displayName,
+    role: data.role,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
@@ -70,8 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, [session, status]);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:10000";
-
   const login = async ({
     username,
     password,
@@ -79,21 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     username: string;
     password: string;
   }) => {
-    const res = await fetch(`${apiUrl}/api/auth/login`, {
+    const data = await apiRequest<AuthResponse>(apiRoutes.auth.login, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: { username, password },
     });
 
-    if (!res.ok) throw new Error("Login failed");
-
-    const data = await res.json();
-    const userData = {
-      id: data.userId,
-      username: data.username,
-      displayName: data.displayName,
-      role: data.role,
-    };
+    const userData = toUser(data);
     setUser(userData);
     setToken(data.token);
     localStorage.setItem("yomu_user", JSON.stringify(userData));
@@ -111,21 +110,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     displayName: string;
     password: string;
   }) => {
-    const res = await fetch(`${apiUrl}/api/auth/register`, {
+    const data = await apiRequest<AuthResponse>(apiRoutes.auth.register, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, displayName, password }),
+      body: { username, email, displayName, password },
     });
 
-    if (!res.ok) throw new Error("Registration failed");
-
-    const data = await res.json();
-    const userData = {
-      id: data.userId,
-      username: data.username,
-      displayName: data.displayName,
-      role: data.role,
-    };
+    const userData = toUser(data);
     setUser(userData);
     setToken(data.token);
     localStorage.setItem("yomu_user", JSON.stringify(userData));

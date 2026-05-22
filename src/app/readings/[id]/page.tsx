@@ -5,19 +5,15 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter, useParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import Header from "@/components/Header";
-
-interface Question {
-  id: string;
-  questionText: string;
-  options: string[];
-}
-
-interface Reading {
-  id: string;
-  title: string;
-  content: string;
-  category: { name: string } | null;
-}
+import {
+  apiRequest,
+  apiRoutes,
+  formatApiError,
+  isApiError,
+  QuestionDTO,
+  QuizResultDTO,
+  ReadingDTO,
+} from "@/lib/api";
 
 type Step = "reading" | "quiz" | "result";
 
@@ -28,11 +24,11 @@ export default function ReadingDetailPage() {
   const id = params.id as string;
   const { showToast } = useToast();
 
-  const [reading, setReading] = useState<Reading | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [reading, setReading] = useState<ReadingDTO | null>(null);
+  const [questions, setQuestions] = useState<QuestionDTO[]>([]);
   const [step, setStep] = useState<Step>("reading");
   const [answers, setAnswers] = useState<number[]>([]);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<QuizResultDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,29 +41,25 @@ export default function ReadingDetailPage() {
 
     const fetchData = async () => {
       try {
-        const [readingRes, questionsRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/readings/${id}`, {
-            headers: { Authorization: `Bearer ${token}` },
+        const [readingData, questionsData] = await Promise.all([
+          apiRequest<ReadingDTO>(apiRoutes.readings.byId(id), { token }),
+          apiRequest<QuestionDTO[]>(apiRoutes.readings.questions(id), {
+            token,
           }),
-          fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/readings/${id}/questions`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
-          ),
         ]);
 
-        if (readingRes.ok) {
-          setReading(await readingRes.json());
-        }
-        if (questionsRes.ok) {
-          const qs = await questionsRes.json();
-          setQuestions(qs);
-          setAnswers(new Array(qs.length).fill(-1));
-        }
+        setReading(readingData);
+        setQuestions(questionsData);
+        setAnswers(new Array(questionsData.length).fill(-1));
       } catch (err) {
-        console.error("Failed to fetch:", err);
-        showToast("Gagal memuat data", "error");
+        if (isApiError(err) && err.status === 401) {
+          showToast(formatApiError(err, "Session expired"), "error");
+          router.push("/login");
+        } else if (isApiError(err) && err.status === 404) {
+          showToast(formatApiError(err, "Bacaan tidak ditemukan"), "error");
+        } else {
+          showToast(formatApiError(err, "Gagal memuat data"), "error");
+        }
       } finally {
         setLoading(false);
       }
@@ -85,35 +77,24 @@ export default function ReadingDetailPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/readings/${id}/submit`,
+      const data = await apiRequest<QuizResultDTO>(
+        apiRoutes.readings.submit(id),
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ readingId: id, answers }),
+          token,
+          body: { readingId: id, answers },
         },
       );
-
-      if (res.ok) {
-        const data = await res.json();
-        setResult(data);
-        setStep("result");
-        showToast("Kuis berhasil disubmit!", "success");
-      } else if (res.status === 400) {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || "Kuis sudah pernah disubmit", "error");
-      } else if (res.status === 401) {
-        showToast("Session expired, silakan login ulang", "error");
+      setResult(data);
+      setStep("result");
+      showToast("Kuis berhasil disubmit!", "success");
+    } catch (err) {
+      if (isApiError(err) && err.status === 401) {
+        showToast(formatApiError(err, "Session expired"), "error");
         router.push("/login");
       } else {
-        showToast("Gagal submit kuis", "error");
+        showToast(formatApiError(err, "Gagal submit kuis"), "error");
       }
-    } catch (err) {
-      console.error("Failed to submit:", err);
-      showToast("Error koneksi saat submit kuis", "error");
     } finally {
       setIsSubmitting(false);
     }

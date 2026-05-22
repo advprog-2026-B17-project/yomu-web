@@ -4,31 +4,15 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
-
-interface UserProfile {
-  user: {
-    id: string;
-    username: string;
-    displayName: string;
-    role: string;
-  };
-  stats: {
-    readingsCompleted: number;
-    quizzesTaken: number;
-    averageAccuracy: number;
-  };
-  achievements: Array<{
-    id: string;
-    name: string;
-    unlockedAt: string;
-  }>;
-  clan: {
-    id: string;
-    name: string;
-    tier: string;
-    role: string;
-  } | null;
-}
+import {
+  apiRequest,
+  apiRoutes,
+  formatApiError,
+  isApiError,
+  normalizeUserProfile,
+  ProfileAchievementDTO,
+  UserProfileDTO,
+} from "@/lib/api";
 
 interface PageProps {
   params: { id: string };
@@ -38,7 +22,7 @@ export default function OtherUserProfilePage({ params }: PageProps) {
   const { user, token, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [profileData, setProfileData] = useState<UserProfile | null>(null);
+  const [profileData, setProfileData] = useState<UserProfileDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -54,38 +38,27 @@ export default function OtherUserProfilePage({ params }: PageProps) {
     }
   }, [authLoading, mounted, user, router]);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:10000";
-
   const userId = params.id;
 
   useEffect(() => {
     if (user && token) {
       setLoading(true);
       setError("");
-      fetch(`${apiUrl}/api/users/${userId}/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => {
-          if (!res.ok) {
-            if (res.status === 404) {
-              throw new Error("User not found");
-            }
-            throw new Error("Failed to fetch profile");
-          }
-          return res.json();
-        })
+      apiRequest<unknown>(apiRoutes.users.profile(userId), { token })
         .then((data) => {
-          setProfileData(data);
+          setProfileData(normalizeUserProfile(data));
           setLoading(false);
         })
         .catch((err) => {
           setError(
-            err instanceof Error ? err.message : "Failed to fetch profile",
+            isApiError(err) && err.status === 404
+              ? formatApiError(err, "User not found")
+              : formatApiError(err, "Failed to fetch profile"),
           );
           setLoading(false);
         });
     }
-  }, [user, token, apiUrl, userId]);
+  }, [user, token, userId]);
 
   useEffect(() => {
     if (mounted && authLoading) return;
@@ -224,21 +197,26 @@ export default function OtherUserProfilePage({ params }: PageProps) {
               <h3 className="text-lg font-semibold mb-4">
                 Achievements (
                 {profileData.achievements?.filter(
-                  (a: any) => a.visible !== false,
+                  (a: ProfileAchievementDTO) => a.visible !== false,
                 ).length || 0}
                 )
               </h3>
               {profileData.achievements &&
-              profileData.achievements.filter((a: any) => a.visible !== false)
-                .length > 0 ? (
+              profileData.achievements.filter(
+                (a: ProfileAchievementDTO) => a.visible !== false,
+              ).length > 0 ? (
                 <div className="grid grid-cols-2 gap-3">
                   {profileData.achievements
-                    .filter((a: any) => a.visible !== false)
-                    .map((ach: any) => (
+                    .filter((a: ProfileAchievementDTO) => a.visible !== false)
+                    .map((ach: ProfileAchievementDTO) => (
                       <div key={ach.id} className="p-3 bg-amber-50 rounded-lg">
                         <p className="font-medium text-amber-800">{ach.name}</p>
                         <p className="text-xs text-amber-600">
-                          {new Date(ach.unlockedAt).toLocaleDateString("id-ID")}
+                          {ach.unlockedAt
+                            ? new Date(ach.unlockedAt).toLocaleDateString(
+                                "id-ID",
+                              )
+                            : "-"}
                         </p>
                       </div>
                     ))}

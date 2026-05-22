@@ -4,31 +4,20 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
-
-interface SeasonInfo {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string | null;
-  isActive: boolean;
-}
-
-interface LeaderboardEntry {
-  clanId: string;
-  clanName: string;
-  tier: string;
-  totalScore: number;
-  memberCount: number;
-  multiplier: number;
-  effectiveScore: number;
-}
+import {
+  apiRequest,
+  apiRoutes,
+  ClanLeaderboardEntry,
+  formatApiError,
+  isApiError,
+} from "@/lib/api";
 
 export default function LeaderboardPage() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [season, setSeason] = useState<SeasonInfo | null>(null);
+  const [leaderboard, setLeaderboard] = useState<ClanLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (isLoading) return;
@@ -38,19 +27,18 @@ export default function LeaderboardPage() {
     }
 
     const fetchLeaderboard = async () => {
+      setError("");
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/clans/leaderboard`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
+        const data = await apiRequest<ClanLeaderboardEntry[]>(
+          apiRoutes.clans.leaderboard,
+          { token },
         );
-        if (res.ok) {
-          const data = await res.json();
-          setLeaderboard(data);
-        }
+        setLeaderboard(data);
       } catch (err) {
-        console.error("Failed to fetch leaderboard:", err);
+        if (isApiError(err) && err.status === 401) {
+          router.push("/login");
+        }
+        setError(formatApiError(err, "Gagal memuat leaderboard"));
       } finally {
         setLoading(false);
       }
@@ -78,6 +66,10 @@ export default function LeaderboardPage() {
 
         {loading ? (
           <p className="text-slate-500">Memuat...</p>
+        ) : error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
         ) : leaderboard.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border">
             <p className="text-slate-500">Belum ada data clan.</p>

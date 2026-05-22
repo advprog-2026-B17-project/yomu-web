@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatApiError } from "@/lib/api";
 
 export default function Register() {
   const [username, setUsername] = useState("");
@@ -20,8 +21,8 @@ export default function Register() {
     try {
       await register({ username, email, displayName, password });
       router.push("/readings");
-    } catch (err: any) {
-      setError(err.message || "Registration failed");
+    } catch (err) {
+      setError(formatApiError(err, "Registration failed"));
     }
   };
 

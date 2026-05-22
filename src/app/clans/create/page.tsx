@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
+import { apiRequest, apiRoutes, formatApiError } from "@/lib/api";
 
 export default function CreateClanPage() {
   const [name, setName] = useState("");
@@ -22,22 +23,15 @@ export default function CreateClanPage() {
 
     setCreating(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/clans?name=${encodeURIComponent(name)}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      if (res.ok) {
-        showToast("Clan berhasil dibuat!", "success");
-        router.push("/clans");
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || "Gagal membuat clan", "error");
-      }
-    } catch {
-      showToast("Error koneksi", "error");
+      await apiRequest(apiRoutes.clans.create, {
+        method: "POST",
+        token,
+        body: { name },
+      });
+      showToast("Clan berhasil dibuat!", "success");
+      router.push("/clans");
+    } catch (err) {
+      showToast(formatApiError(err, "Gagal membuat clan"), "error");
     } finally {
       setCreating(false);
     }

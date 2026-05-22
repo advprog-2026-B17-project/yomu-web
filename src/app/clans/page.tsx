@@ -6,43 +6,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import Header from "@/components/Header";
-
-interface Clan {
-  id: string;
-  name: string;
-  tier: string;
-  totalScore: number;
-  leaderId: string;
-  leaderName: string;
-  memberCount: number;
-  myRole?: string;
-  currentTier?: string;
-  previewTier?: string;
-  willPromote?: boolean;
-  willDemote?: boolean;
-  buffs?: {
-    buffType: string;
-    multiplier: number;
-    activatedAt: string;
-    description: string;
-  }[];
-}
-
-interface ClanBuffsResponse {
-  clanId: string;
-  buffs: {
-    buffType: string;
-    multiplier: number;
-    activatedAt: string;
-    description: string;
-  }[];
-}
+import {
+  apiRequest,
+  apiRoutes,
+  ClanBuffsResponse,
+  ClanRow,
+  formatApiError,
+  isApiError,
+} from "@/lib/api";
 
 export default function ClansPage() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
-  const [clans, setClans] = useState<Clan[]>([]);
+  const [clans, setClans] = useState<ClanRow[]>([]);
   const [myClanId, setMyClanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -59,44 +36,39 @@ export default function ClansPage() {
       clanId: string,
     ): Promise<ClanBuffsResponse | null> => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/clans/${clanId}/buffs`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
+        return await apiRequest<ClanBuffsResponse>(
+          apiRoutes.clans.buffs(clanId),
+          { token },
         );
-        if (res.ok) return res.json();
       } catch (err) {
-        console.error("Failed to fetch buffs:", err);
+        console.error(formatApiError(err, "Failed to fetch clan buffs"));
       }
       return null;
     };
 
     const fetchClans = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/clans`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
+        const data = await apiRequest<ClanRow[]>(apiRoutes.clans.list, {
+          token,
+        });
+        const clansWithBuffs = await Promise.all(
+          data.map(async (clan) => {
+            if (Array.isArray(clan.buffs)) {
+              return clan;
+            }
+
+            const buffsData = await fetchClanBuffs(clan.id);
+            return { ...clan, buffs: buffsData?.buffs || [] };
+          }),
         );
-        if (res.ok) {
-          const data = await res.json();
-          // Fetch buffs for each clan
-          const clansWithBuffs = await Promise.all(
-            data.map(async (clan: Clan) => {
-              const buffsData = await fetchClanBuffs(clan.id);
-              return { ...clan, buffs: buffsData?.buffs || [] };
-            }),
-          );
-          setClans(clansWithBuffs);
-        } else if (res.status === 401) {
-          showToast("Session expired, silakan login ulang", "error");
-          router.push("/login");
-        }
+        setClans(clansWithBuffs);
       } catch (err) {
-        console.error("Failed to fetch clans:", err);
-        showToast("Gagal memuat clan", "error");
+        if (isApiError(err) && err.status === 401) {
+          showToast(formatApiError(err, "Session expired"), "error");
+          router.push("/login");
+        } else {
+          showToast(formatApiError(err, "Gagal memuat clan"), "error");
+        }
       } finally {
         setLoading(false);
       }
@@ -104,20 +76,14 @@ export default function ClansPage() {
 
     const fetchMyClan = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/clans/me`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setMyClanId(data.id);
-        } else if (res.status === 404) {
-          setMyClanId(null);
-        }
+        const data = await apiRequest<ClanRow>(apiRoutes.clans.me, { token });
+        setMyClanId(data.id);
       } catch (err) {
-        console.error("Failed to fetch my clan:", err);
+        if (isApiError(err) && err.status === 404) {
+          setMyClanId(null);
+          return;
+        }
+        console.error(formatApiError(err, "Failed to fetch my clan"));
       }
     };
 
@@ -139,25 +105,17 @@ export default function ClansPage() {
     if (actionLoading) return;
     setActionLoading(clanId);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/clans/${clanId}/join`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+      const data = await apiRequest<ClanRow | undefined>(
+        apiRoutes.clans.join(clanId),
+        { method: "POST", token },
       );
-      if (res.ok) {
-        const data = await res.json();
-        // OPTIMISTIC UPDATE: Set myClanId immediately from response
-        setMyClanId(data.id);
-        showToast("Berhasil bergabung dengan clan!", "success");
-        // Small delay to show the success state before potential redirect
-        setTimeout(() => {
-          router.push("/clans");
-        }, 500);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || "Gagal bergabung", "error");
-      }
-    } catch {
-      showToast("Error koneksi", "error");
+      setMyClanId(data?.id || clanId);
+      showToast("Berhasil bergabung dengan clan!", "success");
+      setTimeout(() => {
+        router.push("/clans");
+      }, 500);
+    } catch (err) {
+      showToast(formatApiError(err, "Gagal bergabung"), "error");
     } finally {
       setActionLoading(null);
     }
@@ -169,19 +127,15 @@ export default function ClansPage() {
 
     setActionLoading(clanId);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/clans/${clanId}/leave`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (res.ok) {
-        showToast("Berhasil keluar dari clan", "success");
-        router.push("/clans");
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || "Gagal keluar clan", "error");
-      }
-    } catch {
-      showToast("Error koneksi", "error");
+      await apiRequest(apiRoutes.clans.leave(clanId), {
+        method: "POST",
+        token,
+      });
+      setMyClanId(null);
+      showToast("Berhasil keluar dari clan", "success");
+      router.push("/clans");
+    } catch (err) {
+      showToast(formatApiError(err, "Gagal keluar clan"), "error");
     } finally {
       setActionLoading(null);
     }
@@ -194,19 +148,14 @@ export default function ClansPage() {
 
     setActionLoading(clanId);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/clans/${clanId}`,
-        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (res.ok) {
-        showToast("Clan berhasil dihapus", "success");
-        router.push("/clans");
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || "Gagal menghapus clan", "error");
-      }
-    } catch {
-      showToast("Error koneksi", "error");
+      await apiRequest(apiRoutes.clans.delete(clanId), {
+        method: "DELETE",
+        token,
+      });
+      showToast("Clan berhasil dihapus", "success");
+      router.push("/clans");
+    } catch (err) {
+      showToast(formatApiError(err, "Gagal menghapus clan"), "error");
     } finally {
       setActionLoading(null);
     }

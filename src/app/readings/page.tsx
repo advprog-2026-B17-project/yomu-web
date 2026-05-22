@@ -5,19 +5,20 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/Header";
-
-interface Reading {
-  id: string;
-  title: string;
-  category: { name: string } | null;
-  createdAt: string;
-}
+import {
+  apiRequest,
+  apiRoutes,
+  formatApiError,
+  isApiError,
+  ReadingDTO,
+} from "@/lib/api";
 
 export default function ReadingsPage() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
-  const [readings, setReadings] = useState<Reading[]>([]);
+  const [readings, setReadings] = useState<ReadingDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (isLoading) return;
@@ -27,19 +28,17 @@ export default function ReadingsPage() {
     }
 
     const fetchReadings = async () => {
+      setError("");
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/readings`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setReadings(data);
-        }
+        const data = await apiRequest<ReadingDTO[]>(apiRoutes.readings.list, {
+          token,
+        });
+        setReadings(data);
       } catch (err) {
-        console.error("Failed to fetch readings:", err);
+        if (isApiError(err) && err.status === 401) {
+          router.push("/login");
+        }
+        setError(formatApiError(err, "Gagal memuat bacaan"));
       } finally {
         setLoading(false);
       }
@@ -69,6 +68,10 @@ export default function ReadingsPage() {
 
         {loading ? (
           <p className="text-slate-500">Memuat...</p>
+        ) : error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
         ) : readings.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border">
             <p className="text-slate-500">Belum ada bacaan.</p>
@@ -85,9 +88,11 @@ export default function ReadingsPage() {
                   {reading.category?.name || "Umum"}
                 </span>
                 <h3 className="text-lg font-semibold mt-2">{reading.title}</h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  {new Date(reading.createdAt).toLocaleDateString("id-ID")}
-                </p>
+                {reading.createdAt && (
+                  <p className="text-sm text-slate-500 mt-1">
+                    {new Date(reading.createdAt).toLocaleDateString("id-ID")}
+                  </p>
+                )}
               </Link>
             ))}
           </div>

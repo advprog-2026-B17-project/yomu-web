@@ -5,24 +5,19 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import Header from "@/components/Header";
-
-interface Mission {
-  id: string;
-  title: string;
-  description: string;
-  targetType: string;
-  targetCount: number;
-  xpReward: number;
-  progress: number | null;
-  claimed: boolean | null;
-  date: string | null;
-}
+import {
+  apiRequest,
+  apiRoutes,
+  formatApiError,
+  isApiError,
+  MissionRow,
+} from "@/lib/api";
 
 export default function MissionsPage() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
-  const [missions, setMissions] = useState<Mission[]>([]);
+  const [missions, setMissions] = useState<MissionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
@@ -35,20 +30,18 @@ export default function MissionsPage() {
 
     const fetchMissions = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:10000"}/api/missions/${user.id}`,
-          { headers: { Authorization: `Bearer ${token}` } },
+        const data = await apiRequest<MissionRow[]>(
+          apiRoutes.missions.byUser(user.id),
+          { token },
         );
-        if (res.ok) {
-          const data = await res.json();
-          setMissions(data);
-        } else if (res.status === 401) {
-          showToast("Session expired, silakan login ulang", "error");
-          router.push("/login");
-        }
+        setMissions(data);
       } catch (err) {
-        console.error("Failed to fetch missions:", err);
-        showToast("Gagal memuat misi", "error");
+        if (isApiError(err) && err.status === 401) {
+          showToast(formatApiError(err, "Session expired"), "error");
+          router.push("/login");
+        } else {
+          showToast(formatApiError(err, "Gagal memuat misi"), "error");
+        }
       } finally {
         setLoading(false);
       }
@@ -61,26 +54,16 @@ export default function MissionsPage() {
     if (claimingId) return;
     setClaimingId(missionId);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/missions/${missionId}/claim`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        },
+      await apiRequest(apiRoutes.missions.claim(missionId), {
+        method: "POST",
+        token,
+      });
+      showToast("Reward berhasil diklaim! +XP", "success");
+      setMissions((current) =>
+        current.map((m) => (m.id === missionId ? { ...m, claimed: true } : m)),
       );
-      if (res.ok) {
-        showToast("Reward berhasil diklaim! +XP", "success");
-        // Refresh missions
-        const updated = missions.map((m) =>
-          m.id === missionId ? { ...m, claimed: true } : m,
-        );
-        setMissions(updated);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || "Gagal klaim reward", "error");
-      }
     } catch (err) {
-      showToast("Error koneksi saat klaim", "error");
+      showToast(formatApiError(err, "Gagal klaim reward"), "error");
     } finally {
       setClaimingId(null);
     }
@@ -96,7 +79,7 @@ export default function MissionsPage() {
 
   if (!user) return null;
 
-  const getMissionStatus = (mission: Mission) => {
+  const getMissionStatus = (mission: MissionRow) => {
     const progress = mission.progress ?? 0;
     const target = mission.targetCount;
     const completed = progress >= target;
@@ -131,7 +114,7 @@ export default function MissionsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {missions.map((mission: Mission) => {
+            {missions.map((mission: MissionRow) => {
               const { progress, target, completed, claimed } =
                 getMissionStatus(mission);
               return (

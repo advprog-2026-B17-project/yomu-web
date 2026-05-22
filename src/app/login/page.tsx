@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
+import { formatApiError } from "@/lib/api";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -19,8 +20,8 @@ export default function Login() {
     try {
       await login({ username, password });
       router.push("/readings");
-    } catch (err: any) {
-      setError(err.message || "Login failed");
+    } catch (err) {
+      setError(formatApiError(err, "Login failed"));
     }
   };
 

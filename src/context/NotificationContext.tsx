@@ -8,16 +8,14 @@ import {
   ReactNode,
   useCallback,
 } from "react";
+import {
+  apiRequest,
+  apiRoutes,
+  formatApiError,
+  NotificationRow,
+} from "@/lib/api";
 
-export interface Notification {
-  id: string;
-  user_id: string;
-  notification_type: string;
-  title: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-}
+export type Notification = NotificationRow;
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -43,50 +41,43 @@ export function NotificationProvider({
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:10000";
-
   const refresh = useCallback(async () => {
     if (!userId) return;
     try {
-      const [notifsRes, countRes] = await Promise.all([
-        fetch(`${apiUrl}/api/notifications/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` },
+      const [notificationsData, countData] = await Promise.all([
+        apiRequest<NotificationRow[]>(apiRoutes.notifications.byUser(userId), {
+          token,
         }),
-        fetch(`${apiUrl}/api/notifications/${userId}/unread-count`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        apiRequest<{ count: number }>(
+          apiRoutes.notifications.unreadCount(userId),
+          { token },
+        ),
       ]);
-      if (notifsRes.ok) {
-        const data = await notifsRes.json();
-        setNotifications(data);
-      }
-      if (countRes.ok) {
-        const data = await countRes.json();
-        setUnreadCount(data.count);
-      }
+      setNotifications(notificationsData);
+      setUnreadCount(countData.count);
     } catch (err) {
-      console.error("Failed to fetch notifications:", err);
+      console.error(formatApiError(err, "Failed to fetch notifications"));
     }
-  }, [userId, token, apiUrl]);
+  }, [userId, token]);
 
   const markAsRead = useCallback(
     async (id: string) => {
       try {
-        const res = await fetch(`${apiUrl}/api/notifications/read/${id}`, {
+        await apiRequest(apiRoutes.notifications.read(id), {
           method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
+          token,
         });
-        if (res.ok) {
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
-          );
-          setUnreadCount((prev) => Math.max(0, prev - 1));
-        }
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
       } catch (err) {
-        console.error("Failed to mark notification as read:", err);
+        console.error(
+          formatApiError(err, "Failed to mark notification as read"),
+        );
       }
     },
-    [token, apiUrl],
+    [token],
   );
 
   useEffect(() => {

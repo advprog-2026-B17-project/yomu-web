@@ -4,23 +4,20 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
-
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  milestone: number;
-  iconUrl: string | null;
-  unlocked: boolean;
-  unlockedAt: string | null;
-  visible: boolean;
-}
+import {
+  AchievementRow,
+  apiRequest,
+  apiRoutes,
+  formatApiError,
+  isApiError,
+} from "@/lib/api";
 
 export default function AchievementsPage() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [achievements, setAchievements] = useState<AchievementRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (isLoading) return;
@@ -30,17 +27,18 @@ export default function AchievementsPage() {
     }
 
     const fetchAchievements = async () => {
+      setError("");
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:10000"}/api/achievements/${user.id}`,
-          { headers: { Authorization: `Bearer ${token}` } },
+        const data = await apiRequest<AchievementRow[]>(
+          apiRoutes.achievements.byUser(user.id),
+          { token },
         );
-        if (res.ok) {
-          const data = await res.json();
-          setAchievements(data);
-        }
+        setAchievements(data);
       } catch (err) {
-        console.error("Failed to fetch achievements:", err);
+        if (isApiError(err) && err.status === 401) {
+          router.push("/login");
+        }
+        setError(formatApiError(err, "Gagal memuat achievement"));
       } finally {
         setLoading(false);
       }
@@ -67,6 +65,10 @@ export default function AchievementsPage() {
         <h2 className="text-2xl font-bold mb-6">Achievements</h2>
         {loading ? (
           <p className="text-slate-500">Memuat...</p>
+        ) : error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
         ) : achievements.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border">
             <p className="text-slate-500">Belum ada achievement.</p>
