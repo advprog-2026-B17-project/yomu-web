@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import Header from "@/components/Header";
 
 interface Achievement {
   id: string;
@@ -25,22 +25,22 @@ export default function AchievementsPage() {
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
     const fetchAchievements = async () => {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:10000'}/api/achievements/${user.id}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:10000"}/api/achievements/${user.id}`,
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         if (res.ok) {
           const data = await res.json();
           setAchievements(data);
         }
       } catch (err) {
-        console.error('Failed to fetch achievements:', err);
+        console.error("Failed to fetch achievements:", err);
       } finally {
         setLoading(false);
       }
@@ -50,7 +50,11 @@ export default function AchievementsPage() {
   }, [user, token, isLoading, router]);
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Memuat...
+      </div>
+    );
   }
 
   if (!user) return null;
@@ -66,7 +70,9 @@ export default function AchievementsPage() {
         ) : achievements.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border">
             <p className="text-slate-500">Belum ada achievement.</p>
-            <p className="text-sm text-slate-400 mt-2">Selesaikan bacaan untuk membuka achievement!</p>
+            <p className="text-sm text-slate-400 mt-2">
+              Selesaikan bacaan untuk membuka achievement!
+            </p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
@@ -76,15 +82,20 @@ export default function AchievementsPage() {
                 <div
                   key={ach.id}
                   className={`p-4 bg-white rounded-xl border flex items-center gap-4 ${
-                    isUnlocked ? '' : 'opacity-50'
+                    isUnlocked ? "" : "opacity-50"
                   }`}
                 >
-                  <div className="text-4xl">{isUnlocked ? '🏆' : '🔒'}</div>
+                  <div className="text-4xl">{isUnlocked ? "🏆" : "🔒"}</div>
                   <div>
                     <h3 className="font-semibold">{ach.name}</h3>
-                    <p className="text-sm text-slate-500">{ach.description || `Milestone: ${ach.milestone}`}</p>
+                    <p className="text-sm text-slate-500">
+                      {ach.description || `Milestone: ${ach.milestone}`}
+                    </p>
                     {ach.unlockedAt && (
-                      <p className="text-xs text-slate-400 mt-1">Di-unlock: {new Date(ach.unlockedAt).toLocaleDateString('id-ID')}</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Di-unlock:{" "}
+                        {new Date(ach.unlockedAt).toLocaleDateString("id-ID")}
+                      </p>
                     )}
                   </div>
                 </div>

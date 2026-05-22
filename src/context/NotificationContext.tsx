@@ -1,6 +1,13 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from "react";
 
 export interface Notification {
   id: string;
@@ -23,23 +30,31 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
 
-export function NotificationProvider({ children, userId, token }: { children: ReactNode; userId: string; token: string }) {
+export function NotificationProvider({
+  children,
+  userId,
+  token,
+}: {
+  children: ReactNode;
+  userId: string;
+  token: string;
+}) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:10000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:10000";
 
   const refresh = useCallback(async () => {
     if (!userId) return;
     try {
       const [notifsRes, countRes] = await Promise.all([
         fetch(`${apiUrl}/api/notifications/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${apiUrl}/api/notifications/${userId}/unread-count`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
       if (notifsRes.ok) {
         const data = await notifsRes.json();
@@ -50,26 +65,29 @@ export function NotificationProvider({ children, userId, token }: { children: Re
         setUnreadCount(data.count);
       }
     } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+      console.error("Failed to fetch notifications:", err);
     }
   }, [userId, token, apiUrl]);
 
-  const markAsRead = useCallback(async (id: string) => {
-    try {
-      const res = await fetch(`${apiUrl}/api/notifications/read/${id}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setNotifications(prev =>
-          prev.map(n => n.id === id ? { ...n, is_read: true } : n)
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
+  const markAsRead = useCallback(
+    async (id: string) => {
+      try {
+        const res = await fetch(`${apiUrl}/api/notifications/read/${id}`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          setNotifications((prev) =>
+            prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
+          );
+          setUnreadCount((prev) => Math.max(0, prev - 1));
+        }
+      } catch (err) {
+        console.error("Failed to mark notification as read:", err);
       }
-    } catch (err) {
-      console.error('Failed to mark notification as read:', err);
-    }
-  }, [token, apiUrl]);
+    },
+    [token, apiUrl],
+  );
 
   useEffect(() => {
     if (userId) {
@@ -81,7 +99,16 @@ export function NotificationProvider({ children, userId, token }: { children: Re
   }, [userId, refresh]);
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, isOpen, setIsOpen, markAsRead, refresh }}>
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        unreadCount,
+        isOpen,
+        setIsOpen,
+        markAsRead,
+        refresh,
+      }}
+    >
       {children}
     </NotificationContext.Provider>
   );
@@ -89,6 +116,9 @@ export function NotificationProvider({ children, userId, token }: { children: Re
 
 export function useNotifications() {
   const context = useContext(NotificationContext);
-  if (!context) throw new Error('useNotifications must be used within NotificationProvider');
+  if (!context)
+    throw new Error(
+      "useNotifications must be used within NotificationProvider",
+    );
   return context;
 }

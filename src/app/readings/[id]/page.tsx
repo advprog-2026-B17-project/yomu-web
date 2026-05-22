@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter, useParams } from 'next/navigation';
-import { useToast } from '@/components/Toast';
-import Header from '@/components/Header';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter, useParams } from "next/navigation";
+import { useToast } from "@/components/Toast";
+import Header from "@/components/Header";
 
 interface Question {
   id: string;
@@ -19,7 +19,7 @@ interface Reading {
   category: { name: string } | null;
 }
 
-type Step = 'reading' | 'quiz' | 'result';
+type Step = "reading" | "quiz" | "result";
 
 export default function ReadingDetailPage() {
   const { user, token, isLoading } = useAuth();
@@ -30,7 +30,7 @@ export default function ReadingDetailPage() {
 
   const [reading, setReading] = useState<Reading | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [step, setStep] = useState<Step>('reading');
+  const [step, setStep] = useState<Step>("reading");
   const [answers, setAnswers] = useState<number[]>([]);
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,7 @@ export default function ReadingDetailPage() {
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
@@ -49,9 +49,12 @@ export default function ReadingDetailPage() {
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/readings/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/readings/${id}/questions`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/readings/${id}/questions`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          ),
         ]);
 
         if (readingRes.ok) {
@@ -63,8 +66,8 @@ export default function ReadingDetailPage() {
           setAnswers(new Array(qs.length).fill(-1));
         }
       } catch (err) {
-        console.error('Failed to fetch:', err);
-        showToast('Gagal memuat data', 'error');
+        console.error("Failed to fetch:", err);
+        showToast("Gagal memuat data", "error");
       } finally {
         setLoading(false);
       }
@@ -76,7 +79,7 @@ export default function ReadingDetailPage() {
   const submitQuiz = async () => {
     if (isSubmitting) return;
     if (answers.some((a) => a === -1)) {
-      showToast('Jawab semua pertanyaan terlebih dahulu', 'warning');
+      showToast("Jawab semua pertanyaan terlebih dahulu", "warning");
       return;
     }
 
@@ -85,49 +88,59 @@ export default function ReadingDetailPage() {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/readings/${id}/submit`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ readingId: id, answers }),
-        }
+        },
       );
 
       if (res.ok) {
         const data = await res.json();
         setResult(data);
-        setStep('result');
-        showToast('Kuis berhasil disubmit!', 'success');
+        setStep("result");
+        showToast("Kuis berhasil disubmit!", "success");
       } else if (res.status === 400) {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Kuis sudah pernah disubmit', 'error');
+        showToast(data.error || "Kuis sudah pernah disubmit", "error");
       } else if (res.status === 401) {
-        showToast('Session expired, silakan login ulang', 'error');
-        router.push('/login');
+        showToast("Session expired, silakan login ulang", "error");
+        router.push("/login");
       } else {
-        showToast('Gagal submit kuis', 'error');
+        showToast("Gagal submit kuis", "error");
       }
     } catch (err) {
-      console.error('Failed to submit:', err);
-      showToast('Error koneksi saat submit kuis', 'error');
+      console.error("Failed to submit:", err);
+      showToast("Error koneksi saat submit kuis", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
-  if (!reading) return <div className="min-h-screen flex items-center justify-center">Bacaan tidak ditemukan</div>;
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Memuat...
+      </div>
+    );
+  if (!reading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Bacaan tidak ditemukan
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-slate-50">
       <Header />
 
       <main className="mx-auto max-w-4xl px-4 py-8">
-        {step === 'reading' && (
+        {step === "reading" && (
           <div className="bg-white rounded-xl border p-8">
             <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-1 rounded">
-              {reading.category?.name || 'Umum'}
+              {reading.category?.name || "Umum"}
             </span>
             <h2 className="text-2xl font-bold mt-2 mb-6">{reading.title}</h2>
             <div className="prose max-w-none">
@@ -135,7 +148,7 @@ export default function ReadingDetailPage() {
             </div>
             <div className="mt-8 flex justify-end">
               <button
-                onClick={() => setStep('quiz')}
+                onClick={() => setStep("quiz")}
                 className="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700"
               >
                 Mulai Kuis
@@ -144,7 +157,7 @@ export default function ReadingDetailPage() {
           </div>
         )}
 
-        {step === 'quiz' && (
+        {step === "quiz" && (
           <div className="bg-white rounded-xl border p-8">
             <h2 className="text-xl font-bold mb-6">Kuis: {reading.title}</h2>
             <div className="space-y-6">
@@ -158,7 +171,9 @@ export default function ReadingDetailPage() {
                       <label
                         key={oi}
                         className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                          answers[qi] === oi ? 'border-primary-500 bg-primary-50' : 'hover:bg-slate-50'
+                          answers[qi] === oi
+                            ? "border-primary-500 bg-primary-50"
+                            : "hover:bg-slate-50"
                         }`}
                       >
                         <input
@@ -185,35 +200,45 @@ export default function ReadingDetailPage() {
                 disabled={isSubmitting || answers.some((a) => a === -1)}
                 className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Mengirim...' : 'Submit Kuis'}
+                {isSubmitting ? "Mengirim..." : "Submit Kuis"}
               </button>
             </div>
           </div>
         )}
 
-        {step === 'result' && result && (
+        {step === "result" && result && (
           <div className="bg-white rounded-xl border p-8 text-center">
             <div className="text-6xl mb-4">
-              {result.accuracy >= 0.8 ? '🎉' : result.accuracy >= 0.5 ? '👍' : '📚'}
+              {result.accuracy >= 0.8
+                ? "🎉"
+                : result.accuracy >= 0.5
+                  ? "👍"
+                  : "📚"}
             </div>
             <h2 className="text-2xl font-bold mb-2">Kuis Selesai!</h2>
             <p className="text-slate-600 mb-6">Skor kamu: {result.score}/100</p>
             <div className="grid grid-cols-3 gap-4 mb-8">
               <div className="p-4 bg-slate-50 rounded-lg">
-                <div className="text-2xl font-bold text-primary-600">{result.score}</div>
+                <div className="text-2xl font-bold text-primary-600">
+                  {result.score}
+                </div>
                 <div className="text-sm text-slate-500">Skor</div>
               </div>
               <div className="p-4 bg-slate-50 rounded-lg">
-                <div className="text-2xl font-bold text-primary-600">{result.correctAnswers}/{result.totalQuestions}</div>
+                <div className="text-2xl font-bold text-primary-600">
+                  {result.correctAnswers}/{result.totalQuestions}
+                </div>
                 <div className="text-sm text-slate-500">Benar</div>
               </div>
               <div className="p-4 bg-slate-50 rounded-lg">
-                <div className="text-2xl font-bold text-primary-600">{(result.accuracy * 100).toFixed(0)}%</div>
+                <div className="text-2xl font-bold text-primary-600">
+                  {(result.accuracy * 100).toFixed(0)}%
+                </div>
                 <div className="text-sm text-slate-500">Akurasi</div>
               </div>
             </div>
             <button
-              onClick={() => router.push('/readings')}
+              onClick={() => router.push("/readings")}
               className="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700"
             >
               Pilih Bacaan Lain

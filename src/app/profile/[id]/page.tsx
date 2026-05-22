@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import Header from "@/components/Header";
 
 interface UserProfile {
   user: {
@@ -40,7 +40,7 @@ export default function OtherUserProfilePage({ params }: PageProps) {
   const [mounted, setMounted] = useState(false);
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -50,36 +50,38 @@ export default function OtherUserProfilePage({ params }: PageProps) {
     if (mounted && authLoading) return;
     if (!mounted) return;
     if (!user) {
-      router.push('/login');
+      router.push("/login");
     }
   }, [authLoading, mounted, user, router]);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:10000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:10000";
 
   const userId = params.id;
 
   useEffect(() => {
     if (user && token) {
       setLoading(true);
-      setError('');
+      setError("");
       fetch(`${apiUrl}/api/users/${userId}/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       })
-        .then(res => {
+        .then((res) => {
           if (!res.ok) {
             if (res.status === 404) {
-              throw new Error('User not found');
+              throw new Error("User not found");
             }
-            throw new Error('Failed to fetch profile');
+            throw new Error("Failed to fetch profile");
           }
           return res.json();
         })
-        .then(data => {
+        .then((data) => {
           setProfileData(data);
           setLoading(false);
         })
-        .catch(err => {
-          setError(err instanceof Error ? err.message : 'Failed to fetch profile');
+        .catch((err) => {
+          setError(
+            err instanceof Error ? err.message : "Failed to fetch profile",
+          );
           setLoading(false);
         });
     }
@@ -89,12 +91,16 @@ export default function OtherUserProfilePage({ params }: PageProps) {
     if (mounted && authLoading) return;
     if (!mounted) return;
     if (!user) {
-      router.push('/login');
+      router.push("/login");
     }
   }, [authLoading, mounted, user, router]);
 
   if (!mounted || authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Memuat...
+      </div>
+    );
   }
 
   if (!user) return null;
@@ -103,7 +109,7 @@ export default function OtherUserProfilePage({ params }: PageProps) {
     if (window.history.length > 1) {
       router.back();
     } else {
-      router.push('/clans');
+      router.push("/clans");
     }
   };
 
@@ -150,8 +156,18 @@ export default function OtherUserProfilePage({ params }: PageProps) {
           onClick={handleBack}
           className="mb-4 flex items-center gap-2 text-slate-600 hover:text-slate-900"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
           Kembali
         </button>
@@ -159,10 +175,12 @@ export default function OtherUserProfilePage({ params }: PageProps) {
         <div className="bg-white rounded-xl border p-8">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center text-2xl">
-              {profileData.user.displayName?.charAt(0).toUpperCase() || 'U'}
+              {profileData.user.displayName?.charAt(0).toUpperCase() || "U"}
             </div>
             <div>
-              <h2 className="text-xl font-bold">{profileData.user.displayName}</h2>
+              <h2 className="text-xl font-bold">
+                {profileData.user.displayName}
+              </h2>
               <p className="text-slate-500">@{profileData.user.username}</p>
               {profileData.user.role && (
                 <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded capitalize">
@@ -178,15 +196,24 @@ export default function OtherUserProfilePage({ params }: PageProps) {
               <h3 className="text-lg font-semibold mb-4">Statistik</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <p className="text-2xl font-bold">{profileData.stats?.readingsCompleted || 0}</p>
+                  <p className="text-2xl font-bold">
+                    {profileData.stats?.readingsCompleted || 0}
+                  </p>
                   <p className="text-sm text-slate-500">Bacaan</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold">{profileData.stats?.quizzesTaken || 0}</p>
+                  <p className="text-2xl font-bold">
+                    {profileData.stats?.quizzesTaken || 0}
+                  </p>
                   <p className="text-sm text-slate-500">Kuis</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold">{Math.round((profileData.stats?.averageAccuracy || 0) * 100)}%</p>
+                  <p className="text-2xl font-bold">
+                    {Math.round(
+                      (profileData.stats?.averageAccuracy || 0) * 100,
+                    )}
+                    %
+                  </p>
                   <p className="text-sm text-slate-500">Akurasi</p>
                 </div>
               </div>
@@ -194,17 +221,27 @@ export default function OtherUserProfilePage({ params }: PageProps) {
 
             {/* Achievements Card - only show visible achievements */}
             <div className="bg-white rounded-xl border p-6">
-              <h3 className="text-lg font-semibold mb-4">Achievements ({profileData.achievements?.filter((a: any) => a.visible !== false).length || 0})</h3>
-              {profileData.achievements && profileData.achievements.filter((a: any) => a.visible !== false).length > 0 ? (
+              <h3 className="text-lg font-semibold mb-4">
+                Achievements (
+                {profileData.achievements?.filter(
+                  (a: any) => a.visible !== false,
+                ).length || 0}
+                )
+              </h3>
+              {profileData.achievements &&
+              profileData.achievements.filter((a: any) => a.visible !== false)
+                .length > 0 ? (
                 <div className="grid grid-cols-2 gap-3">
-                  {profileData.achievements.filter((a: any) => a.visible !== false).map((ach: any) => (
-                    <div key={ach.id} className="p-3 bg-amber-50 rounded-lg">
-                      <p className="font-medium text-amber-800">{ach.name}</p>
-                      <p className="text-xs text-amber-600">
-                        {new Date(ach.unlockedAt).toLocaleDateString('id-ID')}
-                      </p>
-                    </div>
-                  ))}
+                  {profileData.achievements
+                    .filter((a: any) => a.visible !== false)
+                    .map((ach: any) => (
+                      <div key={ach.id} className="p-3 bg-amber-50 rounded-lg">
+                        <p className="font-medium text-amber-800">{ach.name}</p>
+                        <p className="text-xs text-amber-600">
+                          {new Date(ach.unlockedAt).toLocaleDateString("id-ID")}
+                        </p>
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <p className="text-slate-500 text-sm">Belum ada achievement</p>
@@ -218,14 +255,21 @@ export default function OtherUserProfilePage({ params }: PageProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">{profileData.clan.name}</p>
-                    <p className="text-sm text-slate-500">Role: {profileData.clan.role}</p>
+                    <p className="text-sm text-slate-500">
+                      Role: {profileData.clan.role}
+                    </p>
                   </div>
-                  <span className={`px-3 py-1 rounded text-sm font-medium ${
-                    profileData.clan.tier === 'diamond' ? 'bg-purple-100 text-purple-700' :
-                    profileData.clan.tier === 'gold' ? 'bg-yellow-100 text-yellow-700' :
-                    profileData.clan.tier === 'silver' ? 'bg-gray-100 text-gray-700' :
-                    'bg-amber-100 text-amber-700'
-                  }`}>
+                  <span
+                    className={`px-3 py-1 rounded text-sm font-medium ${
+                      profileData.clan.tier === "diamond"
+                        ? "bg-purple-100 text-purple-700"
+                        : profileData.clan.tier === "gold"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : profileData.clan.tier === "silver"
+                            ? "bg-gray-100 text-gray-700"
+                            : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
                     {profileData.clan.tier.toUpperCase()}
                   </span>
                 </div>

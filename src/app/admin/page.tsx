@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/Toast';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/Toast";
 
 interface Season {
   id: string;
@@ -21,16 +21,26 @@ export default function AdminDashboard() {
   const [endingSeason, setEndingSeason] = useState(false);
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') return;
+    if (!user || user.role !== "admin") return;
 
     const fetchStats = async () => {
       try {
-        const [readingsRes, missionsRes, clansRes, seasonRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/readings`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/missions`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/clans`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/seasons/active`, { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
+        const [readingsRes, missionsRes, clansRes, seasonRes] =
+          await Promise.all([
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/readings`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/missions`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/clans`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/admin/seasons/active`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            ),
+          ]);
 
         setStats({
           readings: readingsRes.ok ? (await readingsRes.json()).length : 0,
@@ -42,7 +52,7 @@ export default function AdminDashboard() {
           setActiveSeason(await seasonRes.json());
         }
       } catch (err) {
-        console.error('Failed to fetch stats:', err);
+        console.error("Failed to fetch stats:", err);
       } finally {
         setLoading(false);
       }
@@ -53,34 +63,54 @@ export default function AdminDashboard() {
 
   const handleEndSeason = async () => {
     if (!activeSeason || endingSeason) return;
-    if (!confirm(`Akhiri season "${activeSeason.name}"? Clan akan dipromosi/demoti sesuai ranking.`)) return;
+    if (
+      !confirm(
+        `Akhiri season "${activeSeason.name}"? Clan akan dipromosi/demoti sesuai ranking.`,
+      )
+    )
+      return;
 
     setEndingSeason(true);
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admin/seasons/${activeSeason.id}/end`,
-        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
       );
       if (res.ok) {
-        showToast('Season berhasil diakhiri!', 'success');
+        showToast("Season berhasil diakhiri!", "success");
         setActiveSeason(null);
       } else {
         const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Gagal mengakhiri season', 'error');
+        showToast(data.error || "Gagal mengakhiri season", "error");
       }
     } catch {
-      showToast('Error koneksi', 'error');
+      showToast("Error koneksi", "error");
     } finally {
       setEndingSeason(false);
     }
   };
 
-  if (!user || user.role !== 'admin') return null;
+  if (!user || user.role !== "admin") return null;
 
   const cards = [
-    { label: 'Bacaan', value: stats.readings || 0, href: '/admin/readings', color: 'bg-blue-500' },
-    { label: 'Misi Harian', value: stats.missions || 0, href: '/admin/missions', color: 'bg-green-500' },
-    { label: 'Clan', value: stats.clans || 0, href: '/admin/clans', color: 'bg-purple-500' },
+    {
+      label: "Bacaan",
+      value: stats.readings || 0,
+      href: "/admin/readings",
+      color: "bg-blue-500",
+    },
+    {
+      label: "Misi Harian",
+      value: stats.missions || 0,
+      href: "/admin/missions",
+      color: "bg-green-500",
+    },
+    {
+      label: "Clan",
+      value: stats.clans || 0,
+      href: "/admin/clans",
+      color: "bg-purple-500",
+    },
   ];
 
   return (
@@ -96,7 +126,9 @@ export default function AdminDashboard() {
               href={card.href}
               className="block p-6 bg-white rounded-xl border hover:border-slate-300 transition-colors"
             >
-              <div className={`inline-block px-3 py-1 rounded text-white text-sm mb-2 ${card.color}`}>
+              <div
+                className={`inline-block px-3 py-1 rounded text-white text-sm mb-2 ${card.color}`}
+              >
                 {card.label}
               </div>
               <p className="text-3xl font-bold">{card.value}</p>
@@ -114,7 +146,7 @@ export default function AdminDashboard() {
             disabled={endingSeason}
             className="mt-3 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50"
           >
-            {endingSeason ? 'Mengakhiri...' : 'Akhiri Season'}
+            {endingSeason ? "Mengakhiri..." : "Akhiri Season"}
           </button>
         </div>
       )}
@@ -122,10 +154,16 @@ export default function AdminDashboard() {
       <div className="mt-8 p-6 bg-white rounded-xl border">
         <h3 className="font-semibold mb-4">Quick Actions</h3>
         <div className="flex gap-4 flex-wrap">
-          <a href="/admin/readings" className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+          <a
+            href="/admin/readings"
+            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+          >
             + Tambah Bacaan
           </a>
-          <a href="/admin/missions" className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
+          <a
+            href="/admin/missions"
+            className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+          >
             + Tambah Misi Harian
           </a>
         </div>
