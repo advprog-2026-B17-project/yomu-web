@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useNotifications } from '@/context/NotificationContext';
+import { useNotifications } from "@/context/NotificationContext";
 
 export default function NotificationBell() {
   const { unreadCount, setIsOpen } = useNotifications();
@@ -11,7 +11,12 @@ export default function NotificationBell() {
       className="relative p-2 text-slate-600 hover:text-primary-600 transition-colors"
       aria-label="Notifications"
     >
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg
+        className="w-6 h-6"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -21,7 +26,7 @@ export default function NotificationBell() {
       </svg>
       {unreadCount > 0 && (
         <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
-          {unreadCount > 9 ? '9+' : unreadCount}
+          {unreadCount > 9 ? "9+" : unreadCount}
         </span>
       )}
     </button>

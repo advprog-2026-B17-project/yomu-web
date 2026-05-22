@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/context/AuthContext';
-import Link from 'next/link';
+import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
 
 export default function Home() {
   const { user } = useAuth();
@@ -17,19 +17,31 @@ export default function Home() {
           <nav className="flex items-center gap-4">
             {user ? (
               <>
-                <Link href="/readings" className="text-sm text-slate-600 hover:text-primary-600">
+                <Link
+                  href="/readings"
+                  className="text-sm text-slate-600 hover:text-primary-600"
+                >
                   Bacaan
                 </Link>
-                <Link href="/achievements" className="text-sm text-slate-600 hover:text-primary-600">
+                <Link
+                  href="/achievements"
+                  className="text-sm text-slate-600 hover:text-primary-600"
+                >
                   Achievements
                 </Link>
-                <Link href="/profile" className="text-sm text-slate-600 hover:text-primary-600">
+                <Link
+                  href="/profile"
+                  className="text-sm text-slate-600 hover:text-primary-600"
+                >
                   Profil
                 </Link>
               </>
             ) : (
               <>
-                <Link href="/login" className="text-sm text-slate-600 hover:text-primary-600">
+                <Link
+                  href="/login"
+                  className="text-sm text-slate-600 hover:text-primary-600"
+                >
                   Login
                 </Link>
                 <Link
@@ -47,13 +59,13 @@ export default function Home() {
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-4 py-20 text-center">
         <h1 className="text-5xl font-bold text-slate-900 mb-6">
-          Belajar Membaca dengan{' '}
-          <span className="text-primary-600">Tepat</span> dan{' '}
-          <span className="text-primary-600">Saksama</span>
+          Belajar Membaca dengan <span className="text-primary-600">Tepat</span>{" "}
+          dan <span className="text-primary-600">Saksama</span>
         </h1>
         <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
-          Yomu melatih kemampuan literasi informasi melalui bacaan dan kuis interaktif.
-          Kumpulkan achievement, naik level, dan bergabung dengan clan untuk belajar bersama.
+          Yomu melatih kemampuan literasi informasi melalui bacaan dan kuis
+          interaktif. Kumpulkan achievement, naik level, dan bergabung dengan
+          clan untuk belajar bersama.
         </p>
         <div className="flex items-center justify-center gap-4">
           <Link
@@ -80,21 +92,24 @@ export default function Home() {
               <div className="text-4xl mb-4">📖</div>
               <h3 className="text-xl font-semibold mb-2">Bacaan Beragam</h3>
               <p className="text-slate-600">
-                Beragam teks dari kategori News & Media, Olahraga, dan lainnya untuk melatih pemahaman.
+                Beragam teks dari kategori News & Media, Olahraga, dan lainnya
+                untuk melatih pemahaman.
               </p>
             </div>
             <div className="p-6 rounded-xl bg-slate-50">
               <div className="text-4xl mb-4">🏆</div>
               <h3 className="text-xl font-semibold mb-2">Sistem Achievement</h3>
               <p className="text-slate-600">
-                Kumpulkan achievement dengan menyelesaikan bacaan dan daily missions.
+                Kumpulkan achievement dengan menyelesaikan bacaan dan daily
+                missions.
               </p>
             </div>
             <div className="p-6 rounded-xl bg-slate-50">
               <div className="text-4xl mb-4">⚔️</div>
               <h3 className="text-xl font-semibold mb-2">Sistem Liga</h3>
               <p className="text-slate-600">
-                Bergabung dengan clan dan bersaing di leaderboard untuk naik tier.
+                Bergabung dengan clan dan bersaing di leaderboard untuk naik
+                tier.
               </p>
             </div>
           </div>

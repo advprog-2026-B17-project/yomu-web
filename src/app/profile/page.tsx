@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useToast } from '@/components/Toast';
-import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/Toast";
+import { useRouter } from "next/navigation";
+import Header from "@/components/Header";
 
 interface UserProfile {
   user: {
@@ -40,15 +40,17 @@ export default function ProfilePage() {
   const [mounted, setMounted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingVisibility, setIsEditingVisibility] = useState(false);
-  const [togglingAchievementId, setTogglingAchievementId] = useState<string | null>(null);
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [togglingAchievementId, setTogglingAchievementId] = useState<
+    string | null
+  >(null);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
   const { showToast } = useToast();
@@ -61,64 +63,64 @@ export default function ProfilePage() {
     if (mounted && authLoading) return;
     if (!mounted) return;
     if (!user) {
-      router.push('/login');
+      router.push("/login");
     }
   }, [authLoading, mounted, user, router]);
 
   useEffect(() => {
     if (user) {
-      setUsername(user.username || '');
-      setDisplayName(user.displayName || '');
+      setUsername(user.username || "");
+      setDisplayName(user.displayName || "");
     }
   }, [user]);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:10000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:10000";
 
   useEffect(() => {
     if (user && token) {
       fetch(`${apiUrl}/api/users/${user.id}/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       })
-      .then(res => res.json())
-      .then(data => {
-        setProfileData(data);
-        setUsername(data.user?.username || user.username || '');
-        setEmail(data.user?.email || '');
-        setPhone(data.user?.phone || '');
-        setDisplayName(data.user?.displayName || user.displayName || '');
-      })
-      .catch(err => console.error('Failed to fetch profile:', err));
+        .then((res) => res.json())
+        .then((data) => {
+          setProfileData(data);
+          setUsername(data.user?.username || user.username || "");
+          setEmail(data.user?.email || "");
+          setPhone(data.user?.phone || "");
+          setDisplayName(data.user?.displayName || user.displayName || "");
+        })
+        .catch((err) => console.error("Failed to fetch profile:", err));
     }
   }, [user, token, apiUrl]);
 
   const handleLogout = () => {
     logout();
-    router.push('/');
+    router.push("/");
   };
 
   const handleEditToggle = () => {
     setIsEditing(!isEditing);
-    setError('');
-    setSuccess('');
-    setPassword('');
-    setConfirmPassword('');
-    setUsername(profileData?.user?.username || user?.username || '');
-    setEmail(profileData?.user?.email || '');
-    setPhone(profileData?.user?.phone || '');
-    setDisplayName(profileData?.user?.displayName || user?.displayName || '');
+    setError("");
+    setSuccess("");
+    setPassword("");
+    setConfirmPassword("");
+    setUsername(profileData?.user?.username || user?.username || "");
+    setEmail(profileData?.user?.email || "");
+    setPhone(profileData?.user?.phone || "");
+    setDisplayName(profileData?.user?.displayName || user?.displayName || "");
   };
 
   const handleSave = async () => {
-    setError('');
-    setSuccess('');
+    setError("");
+    setSuccess("");
 
     if (password || confirmPassword) {
       if (password !== confirmPassword) {
-        setError('Passwords do not match');
+        setError("Passwords do not match");
         return;
       }
       if (password.length < 6) {
-        setError('Password must be at least 6 characters');
+        setError("Password must be at least 6 characters");
         return;
       }
     }
@@ -126,7 +128,14 @@ export default function ProfilePage() {
     setIsSaving(true);
 
     try {
-      const body: { username: string; email: string; phone: string; displayName: string; password?: string; updatePassword?: boolean } = {
+      const body: {
+        username: string;
+        email: string;
+        phone: string;
+        displayName: string;
+        password?: string;
+        updatePassword?: boolean;
+      } = {
         username,
         email,
         phone,
@@ -139,80 +148,106 @@ export default function ProfilePage() {
       }
 
       const res = await fetch(`${apiUrl}/api/users/${user?.id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'Failed to update profile');
+        throw new Error(data.message || "Failed to update profile");
       }
 
       const updatedUser = await res.json();
-      setProfileData(prev => prev ? {
-        ...prev,
-        user: {
-          ...prev.user,
+      setProfileData((prev) =>
+        prev
+          ? {
+              ...prev,
+              user: {
+                ...prev.user,
+                username: updatedUser.username,
+                email: updatedUser.email,
+                phone: updatedUser.phone,
+                displayName: updatedUser.displayName,
+              },
+            }
+          : prev,
+      );
+      localStorage.setItem(
+        "yomu_user",
+        JSON.stringify({
+          id: updatedUser.id,
           username: updatedUser.username,
-          email: updatedUser.email,
-          phone: updatedUser.phone,
           displayName: updatedUser.displayName,
-        },
-      } : prev);
-      localStorage.setItem('yomu_user', JSON.stringify({
-        id: updatedUser.id,
-        username: updatedUser.username,
-        displayName: updatedUser.displayName,
-        role: updatedUser.role,
-      }));
+          role: updatedUser.role,
+        }),
+      );
 
-      setSuccess('Profile updated successfully');
+      setSuccess("Profile updated successfully");
       setIsEditing(false);
-      setPassword('');
-      setConfirmPassword('');
+      setPassword("");
+      setConfirmPassword("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      setError(err instanceof Error ? err.message : "Failed to update profile");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleToggleAchievementVisibility = async (achievementId: string, currentVisible: boolean) => {
+  const handleToggleAchievementVisibility = async (
+    achievementId: string,
+    currentVisible: boolean,
+  ) => {
     setTogglingAchievementId(achievementId);
     try {
-      const res = await fetch(`${apiUrl}/api/achievements/${achievementId}/visibility?visible=${!currentVisible}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
+      const res = await fetch(
+        `${apiUrl}/api/achievements/${achievementId}/visibility?visible=${!currentVisible}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!res.ok) {
-        throw new Error('Failed to toggle visibility');
+        throw new Error("Failed to toggle visibility");
       }
 
       // Update local state
-      setProfileData(prev => prev ? {
-        ...prev,
-        achievements: prev.achievements.map(ach =>
-          ach.id === achievementId ? { ...ach, visible: !currentVisible } : ach
-        ),
-      } : null);
+      setProfileData((prev) =>
+        prev
+          ? {
+              ...prev,
+              achievements: prev.achievements.map((ach) =>
+                ach.id === achievementId
+                  ? { ...ach, visible: !currentVisible }
+                  : ach,
+              ),
+            }
+          : null,
+      );
 
-      showToast('Achievement visibility updated', 'success');
+      showToast("Achievement visibility updated", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to update visibility', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Failed to update visibility",
+        "error",
+      );
     } finally {
       setTogglingAchievementId(null);
     }
   };
 
   if (!mounted || authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Memuat...
+      </div>
+    );
   }
 
   if (!user) return null;
@@ -226,10 +261,12 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center text-2xl">
-                {displayName?.charAt(0).toUpperCase() || 'U'}
+                {displayName?.charAt(0).toUpperCase() || "U"}
               </div>
               <div>
-                <h2 className="text-xl font-bold">{isEditing ? displayName : user.displayName}</h2>
+                <h2 className="text-xl font-bold">
+                  {isEditing ? displayName : user.displayName}
+                </h2>
                 <p className="text-slate-500">@{user.username}</p>
               </div>
             </div>
@@ -249,15 +286,24 @@ export default function ProfilePage() {
               <h3 className="text-lg font-semibold mb-4">Statistik</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <p className="text-2xl font-bold">{profileData?.stats?.readingsCompleted || 0}</p>
+                  <p className="text-2xl font-bold">
+                    {profileData?.stats?.readingsCompleted || 0}
+                  </p>
                   <p className="text-sm text-slate-500">Bacaan</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold">{profileData?.stats?.quizzesTaken || 0}</p>
+                  <p className="text-2xl font-bold">
+                    {profileData?.stats?.quizzesTaken || 0}
+                  </p>
                   <p className="text-sm text-slate-500">Kuis</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold">{Math.round((profileData?.stats?.averageAccuracy || 0) * 100)}%</p>
+                  <p className="text-2xl font-bold">
+                    {Math.round(
+                      (profileData?.stats?.averageAccuracy || 0) * 100,
+                    )}
+                    %
+                  </p>
                   <p className="text-sm text-slate-500">Akurasi</p>
                 </div>
               </div>
@@ -266,7 +312,9 @@ export default function ProfilePage() {
             {/* Achievements Card */}
             <div className="bg-white rounded-xl border p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Achievements ({profileData?.achievements?.length || 0})</h3>
+                <h3 className="text-lg font-semibold">
+                  Achievements ({profileData?.achievements?.length || 0})
+                </h3>
                 {!isEditingVisibility && (
                   <button
                     onClick={() => setIsEditingVisibility(true)}
@@ -284,24 +332,39 @@ export default function ProfilePage() {
                   </button>
                 )}
               </div>
-              {profileData?.achievements && profileData.achievements.length > 0 ? (
+              {profileData?.achievements &&
+              profileData.achievements.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3">
                   {profileData.achievements.map((ach) => (
-                    <div key={ach.id} className="p-3 bg-amber-50 rounded-lg flex items-start justify-between">
+                    <div
+                      key={ach.id}
+                      className="p-3 bg-amber-50 rounded-lg flex items-start justify-between"
+                    >
                       <div>
                         <p className="font-medium text-amber-800">{ach.name}</p>
-                        <p className="text-xs text-amber-600">{new Date(ach.unlockedAt).toLocaleDateString('id-ID')}</p>
+                        <p className="text-xs text-amber-600">
+                          {new Date(ach.unlockedAt).toLocaleDateString("id-ID")}
+                        </p>
                       </div>
                       {isEditingVisibility && (
                         <button
-                          onClick={() => handleToggleAchievementVisibility(ach.id, ach.visible)}
+                          onClick={() =>
+                            handleToggleAchievementVisibility(
+                              ach.id,
+                              ach.visible,
+                            )
+                          }
                           disabled={togglingAchievementId === ach.id}
                           className={`p-2 rounded-lg transition-colors ${
                             ach.visible
-                              ? 'text-amber-600 hover:bg-amber-100'
-                              : 'text-slate-400 hover:bg-slate-100'
+                              ? "text-amber-600 hover:bg-amber-100"
+                              : "text-slate-400 hover:bg-slate-100"
                           } disabled:opacity-50`}
-                          title={ach.visible ? 'Hide achievement' : 'Show achievement'}
+                          title={
+                            ach.visible
+                              ? "Hide achievement"
+                              : "Show achievement"
+                          }
                         >
                           {togglingAchievementId === ach.id ? (
                             <span className="text-xs">...</span>
@@ -327,14 +390,21 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">{profileData.clan.name}</p>
-                    <p className="text-sm text-slate-500">Role: {profileData.clan.role}</p>
+                    <p className="text-sm text-slate-500">
+                      Role: {profileData.clan.role}
+                    </p>
                   </div>
-                  <span className={`px-3 py-1 rounded text-sm font-medium ${
-                    profileData.clan.tier === 'diamond' ? 'bg-purple-100 text-purple-700' :
-                    profileData.clan.tier === 'gold' ? 'bg-yellow-100 text-yellow-700' :
-                    profileData.clan.tier === 'silver' ? 'bg-gray-100 text-gray-700' :
-                    'bg-amber-100 text-amber-700'
-                  }`}>
+                  <span
+                    className={`px-3 py-1 rounded text-sm font-medium ${
+                      profileData.clan.tier === "diamond"
+                        ? "bg-purple-100 text-purple-700"
+                        : profileData.clan.tier === "gold"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : profileData.clan.tier === "silver"
+                            ? "bg-gray-100 text-gray-700"
+                            : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
                     {profileData.clan.tier.toUpperCase()}
                   </span>
                 </div>
@@ -358,7 +428,9 @@ export default function ProfilePage() {
             {isEditing ? (
               <>
                 <div>
-                  <label htmlFor="username" className="text-sm text-slate-500">Username</label>
+                  <label htmlFor="username" className="text-sm text-slate-500">
+                    Username
+                  </label>
                   <input
                     id="username"
                     type="text"
@@ -371,7 +443,9 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="text-sm text-slate-500">Email</label>
+                  <label htmlFor="email" className="text-sm text-slate-500">
+                    Email
+                  </label>
                   <input
                     id="email"
                     type="email"
@@ -382,7 +456,9 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label htmlFor="phone" className="text-sm text-slate-500">Phone</label>
+                  <label htmlFor="phone" className="text-sm text-slate-500">
+                    Phone
+                  </label>
                   <input
                     id="phone"
                     type="tel"
@@ -394,7 +470,12 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label htmlFor="displayName" className="text-sm text-slate-500">Display Name</label>
+                  <label
+                    htmlFor="displayName"
+                    className="text-sm text-slate-500"
+                  >
+                    Display Name
+                  </label>
                   <input
                     id="displayName"
                     type="text"
@@ -407,10 +488,17 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="pt-4 border-t space-y-4">
-                  <p className="text-sm text-slate-500">Leave password fields empty to keep your current password</p>
+                  <p className="text-sm text-slate-500">
+                    Leave password fields empty to keep your current password
+                  </p>
 
                   <div>
-                    <label htmlFor="password" className="text-sm text-slate-500">New Password</label>
+                    <label
+                      htmlFor="password"
+                      className="text-sm text-slate-500"
+                    >
+                      New Password
+                    </label>
                     <input
                       id="password"
                       type="password"
@@ -423,7 +511,12 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <label htmlFor="confirmPassword" className="text-sm text-slate-500">Confirm Password</label>
+                    <label
+                      htmlFor="confirmPassword"
+                      className="text-sm text-slate-500"
+                    >
+                      Confirm Password
+                    </label>
                     <input
                       id="confirmPassword"
                       type="password"
@@ -442,7 +535,7 @@ export default function ProfilePage() {
                     disabled={isSaving}
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
                   >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
+                    {isSaving ? "Saving..." : "Save Changes"}
                   </button>
                   <button
                     onClick={handleEditToggle}
@@ -457,15 +550,21 @@ export default function ProfilePage() {
               <>
                 <div>
                   <label className="text-sm text-slate-500">Username</label>
-                  <p className="font-medium">{profileData?.user?.username || user.username}</p>
+                  <p className="font-medium">
+                    {profileData?.user?.username || user.username}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-slate-500">Email</label>
-                  <p className="font-medium">{profileData?.user?.email || '-'}</p>
+                  <p className="font-medium">
+                    {profileData?.user?.email || "-"}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-slate-500">Phone</label>
-                  <p className="font-medium">{profileData?.user?.phone || '-'}</p>
+                  <p className="font-medium">
+                    {profileData?.user?.phone || "-"}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-slate-500">Display Name</label>

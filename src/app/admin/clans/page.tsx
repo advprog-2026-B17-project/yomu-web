@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 interface Clan {
   id: string;
@@ -19,7 +19,7 @@ export default function AdminClansPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') return;
+    if (!user || user.role !== "admin") return;
     fetchClans();
   }, [user, token]);
 
@@ -30,23 +30,23 @@ export default function AdminClansPage() {
       });
       if (res.ok) setClans(await res.json());
     } catch (err) {
-      console.error('Failed:', err);
+      console.error("Failed:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const deleteClan = async (id: string) => {
-    if (confirm('Hapus clan ini?')) {
+    if (confirm("Hapus clan ini?")) {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/clans/${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchClans();
     }
   };
 
-  if (!user || user.role !== 'admin') return null;
+  if (!user || user.role !== "admin") return null;
 
   return (
     <div>
@@ -61,12 +61,24 @@ export default function AdminClansPage() {
           <table className="w-full">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Nama</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Tier</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Leader</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Skor</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Anggota</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Aksi</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Nama
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Tier
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Leader
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                  Skor
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                  Anggota
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -74,17 +86,24 @@ export default function AdminClansPage() {
                 <tr key={clan.id}>
                   <td className="px-6 py-4 font-medium">{clan.name}</td>
                   <td className="px-6 py-4">
-                    <span className={`text-xs px-2 py-1 rounded font-medium ${
-                      clan.tier === 'diamond' ? 'bg-purple-100 text-purple-700' :
-                      clan.tier === 'gold' ? 'bg-yellow-100 text-yellow-700' :
-                      clan.tier === 'silver' ? 'bg-gray-100 text-gray-700' :
-                      'bg-amber-100 text-amber-700'
-                    }`}>
+                    <span
+                      className={`text-xs px-2 py-1 rounded font-medium ${
+                        clan.tier === "diamond"
+                          ? "bg-purple-100 text-purple-700"
+                          : clan.tier === "gold"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : clan.tier === "silver"
+                              ? "bg-gray-100 text-gray-700"
+                              : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
                       {clan.tier.toUpperCase()}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm">{clan.leaderName}</td>
-                  <td className="px-6 py-4 text-right">{clan.totalScore.toFixed(0)}</td>
+                  <td className="px-6 py-4 text-right">
+                    {clan.totalScore.toFixed(0)}
+                  </td>
                   <td className="px-6 py-4 text-right">{clan.memberCount}</td>
                   <td className="px-6 py-4 text-right">
                     <button
