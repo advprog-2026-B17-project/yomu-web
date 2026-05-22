@@ -23,10 +23,14 @@ export default function CreateClanPage() {
     setCreating(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/clans?name=${encodeURIComponent(name)}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/clans`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name }),
         },
       );
       if (res.ok) {
