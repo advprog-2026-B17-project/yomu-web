@@ -1,54 +1,47 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/Toast';
-import Header from '@/components/Header';
-
-interface Mission {
-  id: string;
-  title: string;
-  description: string;
-  targetType: string;
-  targetCount: number;
-  xpReward: number;
-  progress: number | null;
-  claimed: boolean | null;
-  date: string | null;
-}
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/Toast";
+import Header from "@/components/Header";
+import {
+  apiRequest,
+  apiRoutes,
+  formatApiError,
+  isApiError,
+  MissionRow,
+} from "@/lib/api";
 
 export default function MissionsPage() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
-  const [missions, setMissions] = useState<Mission[]>([]);
+  const [missions, setMissions] = useState<MissionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
     const fetchMissions = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:10000'}/api/missions/${user.id}`,
-          { headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setMissions(data);
-        } else if (res.status === 401) {
-          showToast('Session expired, silakan login ulang', 'error');
-          router.push('/login');
-        }
+        const data = await apiRequest<MissionRow[]>(
+          apiRoutes.missions.byUser(user.id),
+          { token },
+        );
+        setMissions(data);
       } catch (err) {
-        console.error('Failed to fetch missions:', err);
-        showToast('Gagal memuat misi', 'error');
+        if (isApiError(err) && err.status === 401) {
+          showToast(formatApiError(err, "Session expired"), "error");
+          router.push("/login");
+        } else {
+          showToast(formatApiError(err, "Gagal memuat misi"), "error");
+        }
       } finally {
         setLoading(false);
       }
@@ -61,38 +54,32 @@ export default function MissionsPage() {
     if (claimingId) return;
     setClaimingId(missionId);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/missions/${missionId}/claim`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        }
+      await apiRequest(apiRoutes.missions.claim(missionId), {
+        method: "POST",
+        token,
+      });
+      showToast("Reward berhasil diklaim! +XP", "success");
+      setMissions((current) =>
+        current.map((m) => (m.id === missionId ? { ...m, claimed: true } : m)),
       );
-      if (res.ok) {
-        showToast('Reward berhasil diklaim! +XP', 'success');
-        // Refresh missions
-        const updated = missions.map(m =>
-          m.id === missionId ? { ...m, claimed: true } : m
-        );
-        setMissions(updated);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || 'Gagal klaim reward', 'error');
-      }
     } catch (err) {
-      showToast('Error koneksi saat klaim', 'error');
+      showToast(formatApiError(err, "Gagal klaim reward"), "error");
     } finally {
       setClaimingId(null);
     }
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Memuat...
+      </div>
+    );
   }
 
   if (!user) return null;
 
-  const getMissionStatus = (mission: Mission) => {
+  const getMissionStatus = (mission: MissionRow) => {
     const progress = mission.progress ?? 0;
     const target = mission.targetCount;
     const completed = progress >= target;
@@ -108,7 +95,11 @@ export default function MissionsPage() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Misi Harian</h2>
           <span className="text-sm text-slate-500">
-            {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {new Date().toLocaleDateString("id-ID", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
           </span>
         </div>
 
@@ -117,14 +108,20 @@ export default function MissionsPage() {
         ) : missions.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border">
             <p className="text-slate-500">Belum ada misi harian.</p>
-            <p className="text-sm text-slate-400 mt-2">Misi akan muncul setiap hari!</p>
+            <p className="text-sm text-slate-400 mt-2">
+              Misi akan muncul setiap hari!
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {missions.map((mission: Mission) => {
-              const { progress, target, completed, claimed } = getMissionStatus(mission);
+            {missions.map((mission: MissionRow) => {
+              const { progress, target, completed, claimed } =
+                getMissionStatus(mission);
               return (
-                <div key={mission.id} className="p-4 bg-white rounded-xl border">
+                <div
+                  key={mission.id}
+                  className="p-4 bg-white rounded-xl border"
+                >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
@@ -140,25 +137,39 @@ export default function MissionsPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-slate-500 mt-1">{mission.description}</p>
+                      <p className="text-sm text-slate-500 mt-1">
+                        {mission.description}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-amber-500">+{mission.xpReward} XP</div>
+                      <div className="text-lg font-bold text-amber-500">
+                        +{mission.xpReward} XP
+                      </div>
                     </div>
                   </div>
                   <div className="mt-4">
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span className="text-slate-500">
-                        {mission.targetType === 'reading' ? 'Bacaan' : mission.targetType}
+                        {mission.targetType === "reading"
+                          ? "Bacaan"
+                          : mission.targetType}
                       </span>
-                      <span className={completed ? 'text-green-600 font-medium' : 'text-slate-600'}>
+                      <span
+                        className={
+                          completed
+                            ? "text-green-600 font-medium"
+                            : "text-slate-600"
+                        }
+                      >
                         {progress}/{target}
                       </span>
                     </div>
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className={`h-full transition-all ${completed ? 'bg-green-500' : 'bg-primary-500'}`}
-                        style={{ width: `${Math.min((progress / target) * 100, 100)}%` }}
+                        className={`h-full transition-all ${completed ? "bg-green-500" : "bg-primary-500"}`}
+                        style={{
+                          width: `${Math.min((progress / target) * 100, 100)}%`,
+                        }}
                       />
                     </div>
                     {completed && !claimed && (
@@ -167,7 +178,9 @@ export default function MissionsPage() {
                         disabled={claimingId === mission.id}
                         className="mt-3 w-full py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 disabled:opacity-50"
                       >
-                        {claimingId === mission.id ? 'Mengklaim...' : 'Klaim Reward'}
+                        {claimingId === mission.id
+                          ? "Mengklaim..."
+                          : "Klaim Reward"}
                       </button>
                     )}
                   </div>

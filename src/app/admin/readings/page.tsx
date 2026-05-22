@@ -1,40 +1,35 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-
-interface Reading {
-  id: string;
-  title: string;
-  content: string;
-  category: { id: number; name: string } | null;
-  createdAt: string;
-}
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
+import { apiRequest, apiRoutes, formatApiError, ReadingDTO } from "@/lib/api";
 
 export default function AdminReadingsPage() {
   const { user, token } = useAuth();
-  const router = useRouter();
-  const [readings, setReadings] = useState<Reading[]>([]);
+  const [readings, setReadings] = useState<ReadingDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', content: '', category: 'News & Media' });
-  const [categoryInput, setCategoryInput] = useState('');
+  const [form, setForm] = useState({
+    title: "",
+    content: "",
+    category: "News & Media",
+  });
+  const [categoryInput, setCategoryInput] = useState("");
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') return;
+    if (!user || user.role !== "admin") return;
     fetchReadings();
   }, [user, token]);
 
   const fetchReadings = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/readings`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const data = await apiRequest<ReadingDTO[]>(apiRoutes.readings.list, {
+        token,
       });
-      if (res.ok) setReadings(await res.json());
+      setReadings(data);
     } catch (err) {
-      console.error('Failed:', err);
+      alert(formatApiError(err, "Gagal memuat bacaan"));
     } finally {
       setLoading(false);
     }
@@ -43,27 +38,34 @@ export default function AdminReadingsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/readings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ ...form, categoryName: form.category }),
+      await apiRequest(apiRoutes.readings.list, {
+        method: "POST",
+        token,
+        body: { ...form, categoryName: form.category },
       });
-      if (res.ok) {
-        setShowForm(false);
-        setForm({ title: '', content: '', category: 'News & Media' });
-        fetchReadings();
-      } else {
-        alert('Gagal membuat bacaan');
-      }
-    } catch {
-      alert('Error');
+      setShowForm(false);
+      setForm({ title: "", content: "", category: "News & Media" });
+      fetchReadings();
+    } catch (err) {
+      alert(formatApiError(err, "Gagal membuat bacaan"));
     }
   };
 
-  if (!user || user.role !== 'admin') return null;
+  const handleDelete = async (id: string) => {
+    if (!confirm("Hapus bacaan ini?")) return;
+
+    try {
+      await apiRequest(apiRoutes.readings.byId(id), {
+        method: "DELETE",
+        token,
+      });
+      fetchReadings();
+    } catch (err) {
+      alert(formatApiError(err, "Gagal menghapus bacaan"));
+    }
+  };
+
+  if (!user || user.role !== "admin") return null;
 
   return (
     <div>
@@ -73,12 +75,15 @@ export default function AdminReadingsPage() {
           onClick={() => setShowForm(!showForm)}
           className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
         >
-          {showForm ? 'Batal' : '+ Tambah Bacaan'}
+          {showForm ? "Batal" : "+ Tambah Bacaan"}
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-8 p-6 bg-white rounded-xl border space-y-4">
+        <form
+          onSubmit={handleCreate}
+          className="mb-8 p-6 bg-white rounded-xl border space-y-4"
+        >
           <div>
             <label className="block text-sm font-medium mb-1">Judul</label>
             <input
@@ -111,7 +116,10 @@ export default function AdminReadingsPage() {
               required
             />
           </div>
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+          >
             Simpan
           </button>
         </form>
@@ -128,23 +136,22 @@ export default function AdminReadingsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                    {r.category?.name || 'Tanpa kategori'}
+                    {r.category?.name || "Tanpa kategori"}
                   </span>
                   <h3 className="font-semibold mt-1">
-                    <Link href={`/admin/readings/${r.id}`} className="hover:underline">{r.title}</Link>
+                    <Link
+                      href={`/admin/readings/${r.id}`}
+                      className="hover:underline"
+                    >
+                      {r.title}
+                    </Link>
                   </h3>
-                  <p className="text-sm text-slate-500 mt-1 line-clamp-2">{r.content}</p>
+                  <p className="text-sm text-slate-500 mt-1 line-clamp-2">
+                    {r.content}
+                  </p>
                 </div>
                 <button
-                  onClick={async () => {
-                    if (confirm('Hapus bacaan ini?')) {
-                      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/readings/${r.id}`, {
-                        method: 'DELETE',
-                        headers: { Authorization: `Bearer ${token}` },
-                      });
-                      fetchReadings();
-                    }
-                  }}
+                  onClick={() => handleDelete(r.id)}
                   className="text-red-600 text-sm hover:underline"
                 >
                   Hapus

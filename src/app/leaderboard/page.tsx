@@ -1,53 +1,44 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
-
-interface SeasonInfo {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string | null;
-  isActive: boolean;
-}
-
-interface LeaderboardEntry {
-  clanId: string;
-  clanName: string;
-  tier: string;
-  totalScore: number;
-  memberCount: number;
-  multiplier: number;
-  effectiveScore: number;
-}
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import Header from "@/components/Header";
+import {
+  apiRequest,
+  apiRoutes,
+  ClanLeaderboardEntry,
+  formatApiError,
+  isApiError,
+} from "@/lib/api";
 
 export default function LeaderboardPage() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [season, setSeason] = useState<SeasonInfo | null>(null);
+  const [leaderboard, setLeaderboard] = useState<ClanLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
     const fetchLeaderboard = async () => {
+      setError("");
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/clans/leaderboard`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setLeaderboard(data);
-        }
+        const data = await apiRequest<ClanLeaderboardEntry[]>(
+          apiRoutes.clans.leaderboard,
+          { token },
+        );
+        setLeaderboard(data);
       } catch (err) {
-        console.error('Failed to fetch leaderboard:', err);
+        if (isApiError(err) && err.status === 401) {
+          router.push("/login");
+        }
+        setError(formatApiError(err, "Gagal memuat leaderboard"));
       } finally {
         setLoading(false);
       }
@@ -57,7 +48,11 @@ export default function LeaderboardPage() {
   }, [user, token, isLoading, router]);
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Memuat...
+      </div>
+    );
   }
 
   if (!user) return null;
@@ -71,6 +66,10 @@ export default function LeaderboardPage() {
 
         {loading ? (
           <p className="text-slate-500">Memuat...</p>
+        ) : error ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
         ) : leaderboard.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border">
             <p className="text-slate-500">Belum ada data clan.</p>
@@ -83,27 +82,41 @@ export default function LeaderboardPage() {
                 className="flex items-center justify-between p-4 border-b last:border-b-0"
               >
                 <div className="flex items-center gap-4">
-                  <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold ${
-                    idx === 0 ? 'bg-amber-400 text-white' :
-                    idx === 1 ? 'bg-gray-300 text-white' :
-                    idx === 2 ? 'bg-amber-600 text-white' :
-                    'bg-slate-100 text-slate-600'
-                  }`}>
+                  <span
+                    className={`w-8 h-8 flex items-center justify-center rounded-full font-bold ${
+                      idx === 0
+                        ? "bg-amber-400 text-white"
+                        : idx === 1
+                          ? "bg-gray-300 text-white"
+                          : idx === 2
+                            ? "bg-amber-600 text-white"
+                            : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
                     {idx + 1}
                   </span>
                   <div>
                     <p className="font-semibold">{clan.clanName}</p>
-                    <p className="text-sm text-slate-500">{clan.memberCount} anggota</p>
+                    <p className="text-sm text-slate-500">
+                      {clan.memberCount} anggota
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-lg">{clan.effectiveScore.toFixed(0)}</p>
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    clan.tier === 'diamond' ? 'bg-purple-100 text-purple-700' :
-                    clan.tier === 'gold' ? 'bg-yellow-100 text-yellow-700' :
-                    clan.tier === 'silver' ? 'bg-gray-100 text-gray-700' :
-                    'bg-amber-100 text-amber-700'
-                  }`}>
+                  <p className="font-bold text-lg">
+                    {clan.effectiveScore.toFixed(0)}
+                  </p>
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      clan.tier === "diamond"
+                        ? "bg-purple-100 text-purple-700"
+                        : clan.tier === "gold"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : clan.tier === "silver"
+                            ? "bg-gray-100 text-gray-700"
+                            : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
                     {clan.tier.toUpperCase()}
                   </span>
                 </div>

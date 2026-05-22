@@ -1,5 +1,6 @@
-import NextAuth from 'next-auth';
-import GoogleProvider from 'next-auth/providers/google';
+import NextAuth from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+import { apiRequest, apiRoutes, AuthResponse } from "@/lib/api";
 
 const handler = NextAuth({
   providers: [
@@ -10,29 +11,26 @@ const handler = NextAuth({
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (account?.provider === 'google') {
+      if (account?.provider === "google") {
         // Create or update user in database via API
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          const data = await apiRequest<AuthResponse>(apiRoutes.auth.google, {
+            method: "POST",
+            body: {
+              googleToken: account.id_token,
               email: user.email,
-              username: user.email?.split('@')[0],
+              username: user.email?.split("@")[0],
               displayName: user.name,
               googleId: profile?.sub,
               idToken: account.id_token,
-            }),
+            },
           });
 
-          if (res.ok) {
-            const data = await res.json();
-            (user as any).token = data.token;
-            (user as any).userId = data.userId;
-            (user as any).role = data.role;
-          }
+          (user as any).token = data.token;
+          (user as any).userId = data.userId;
+          (user as any).role = data.role;
         } catch (err) {
-          console.error('Google auth failed:', err);
+          console.error("Google auth failed:", err);
           return false;
         }
       }
@@ -54,7 +52,7 @@ const handler = NextAuth({
     },
   },
   pages: {
-    signIn: '/login',
+    signIn: "/login",
   },
 });
 

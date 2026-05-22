@@ -1,34 +1,39 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
+import { useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 
 const adminNav = [
-  { href: '/admin', label: 'Dashboard' },
-  { href: '/admin/readings', label: 'Bacaan' },
-  { href: '/admin/missions', label: 'Misi Harian' },
-  { href: '/admin/clans', label: 'Clan' },
+  { href: "/admin", label: "Dashboard" },
+  { href: "/admin/readings", label: "Bacaan" },
+  { href: "/admin/missions", label: "Misi Harian" },
+  { href: "/admin/clans", label: "Clan" },
+  { href: "/admin/achievements", label: "Achievements" },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, token, isLoading } = useAuth();
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
-    if (user.role !== 'admin') {
-      router.push('/');
+    if (user.role !== "admin") {
+      router.push("/");
     }
   }, [user, isLoading, router]);
 
-  if (isLoading || !user || user.role !== 'admin') return null;
+  if (isLoading || !user || user.role !== "admin") return null;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -42,22 +47,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href={item.href}
                 className={`text-sm px-3 py-1 rounded ${
                   pathname === item.href
-                    ? 'bg-slate-700 text-white'
-                    : 'text-slate-300 hover:text-white'
+                    ? "bg-slate-700 text-white"
+                    : "text-slate-300 hover:text-white"
                 }`}
               >
                 {item.label}
               </Link>
             ))}
-            <Link href="/readings" className="text-sm text-slate-300 hover:text-white ml-4">
+
+            <Link
+              href="/readings"
+              className="text-sm text-slate-300 hover:text-white ml-4"
+            >
               ← Kembali ke User App
             </Link>
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        {children}
-      </main>
+      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
     </div>
   );
 }
