@@ -59,29 +59,34 @@ export default function OtherUserProfilePage({ params }: PageProps) {
   const userId = params.id;
 
   useEffect(() => {
-    if (user && token) {
-      setLoading(true);
-      setError("");
-      fetch(`${apiUrl}/api/users/${userId}/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => {
-          if (!res.ok) {
-            if (res.status === 404) {
-              throw new Error("User not found");
-            }
-            throw new Error("Failed to fetch profile");
-          }
+    if (user && token && userId) {
+      Promise.all([
+        fetch(`${apiUrl}/api/users/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(res => {
+          if (!res.ok) throw new Error("User not found");
           return res.json();
-        })
-        .then((data) => {
-          setProfileData(data);
+        }),
+        fetch(`${apiUrl}/api/gamification/profiles/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(res => res.json()),
+      ])
+        .then(([userData, gamiData]) => {
+          setProfileData({
+            user: {
+              id: userId,
+              username: userData.username || "",
+              displayName: userData.displayName || "",
+              role: userData.role || "student",
+            },
+            stats: gamiData.stats || { readingsCompleted: 0, quizzesTaken: 0, averageAccuracy: 0 },
+            achievements: gamiData.visibleAchievements || [],
+            clan: gamiData.clanSummary || null,
+          });
           setLoading(false);
         })
         .catch((err) => {
-          setError(
-            err instanceof Error ? err.message : "Failed to fetch profile",
-          );
+          setError(err instanceof Error ? err.message : "Failed to fetch profile");
           setLoading(false);
         });
     }

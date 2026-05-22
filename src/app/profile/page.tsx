@@ -78,16 +78,33 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user && token) {
-      fetch(`${apiUrl}/api/users/${user.id}/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setProfileData(data);
-          setUsername(data.user?.username || user.username || "");
-          setEmail(data.user?.email || "");
-          setPhone(data.user?.phone || "");
-          setDisplayName(data.user?.displayName || user.displayName || "");
+      Promise.all([
+        fetch(`${apiUrl}/api/users/${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(res => res.json()),
+        fetch(`${apiUrl}/api/gamification/profiles/${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(res => res.json()),
+      ])
+        .then(([userData, gamiData]) => {
+          setUsername(userData.username || user.username || "");
+          setEmail(userData.email || "");
+          setPhone(userData.phone || "");
+          setDisplayName(userData.displayName || user.displayName || "");
+
+          setProfileData({
+            user: {
+              id: user.id,
+              username: userData.username || user.username || "",
+              email: userData.email || "",
+              phone: userData.phone || null,
+              displayName: userData.displayName || user.displayName || "",
+              role: userData.role || user.role || "student",
+            },
+            stats: gamiData.stats || { readingsCompleted: 0, quizzesTaken: 0, averageAccuracy: 0 },
+            achievements: gamiData.visibleAchievements || [],
+            clan: gamiData.clanSummary || null,
+          });
         })
         .catch((err) => console.error("Failed to fetch profile:", err));
     }
